@@ -22,21 +22,76 @@ flowchart LR
 
 ```
 test-lens/
-├── frontend/          # UI (separate development)
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.tsx        # Root layout with Geist fonts
+│   │   │   ├── page.tsx          # Main page with tab navigation
+│   │   │   └── globals.css       # Tailwind + theme variables
+│   │   ├── components/
+│   │   │   ├── Header.tsx        # App title and description
+│   │   │   ├── UploadSection.tsx  # File upload with status handling
+│   │   │   ├── FileDropZone.tsx   # Drag-and-drop file input
+│   │   │   ├── SearchSection.tsx  # User story input + search controls
+│   │   │   ├── ResultsSection.tsx # Search results container
+│   │   │   ├── ResultCard.tsx     # Individual result with expandable reason
+│   │   │   ├── RelevanceBadge.tsx # Color-coded relevance pill
+│   │   │   └── RiskScore.tsx      # 5-dot risk indicator
+│   │   ├── lib/
+│   │   │   └── api.ts            # API client (upload, search, health)
+│   │   └── types/
+│   │       └── index.ts          # TypeScript interfaces
+│   ├── next.config.ts            # API proxy to backend
+│   ├── package.json
+│   └── tsconfig.json
 ├── backend/
 │   ├── src/
-│   │   ├── server.ts          # Express app entry point
+│   │   ├── server.ts             # Express app entry point
+│   │   ├── cli.ts                # Interactive CLI for testing
 │   │   ├── routes/
-│   │   │   ├── upload.ts      # POST /api/upload
-│   │   │   └── search.ts      # POST /api/search
+│   │   │   ├── upload.ts         # POST /api/upload
+│   │   │   └── search.ts        # POST /api/search
 │   │   └── services/
-│   │       ├── parser.ts      # CSV/XLSX file parsing
-│   │       ├── embedder.ts    # OpenAI embeddings
-│   │       ├── vectorStore.ts # Pinecone vector DB
-│   │       └── llm.ts         # Claude analysis
-│   ├── test-data/             # Sample test fixtures
-│   └── uploads/               # Temp file storage
+│   │       ├── parser.ts         # CSV/XLSX file parsing
+│   │       ├── embedder.ts       # OpenAI embeddings
+│   │       ├── vectorStore.ts    # Pinecone vector DB
+│   │       └── llm.ts           # Claude analysis
+│   ├── test-data/                # Sample test fixtures
+│   └── uploads/                  # Temp file storage
 └── README.md
+```
+
+## Frontend
+
+The frontend is a Next.js app with two tabs:
+
+- **Upload** — Drag-and-drop CSV/XLSX files. Shows parsing and indexing progress, success count, or error messages.
+- **Search** — Enter a user story, pick how many results (5–20), and hit search. Results appear below with relevance badges, risk scores, and expandable AI explanations.
+
+Search works independently — if test cases are already indexed in Pinecone, you can search without uploading first.
+
+```mermaid
+flowchart TB
+    subgraph Frontend["Frontend (Next.js)"]
+        Page["page.tsx<br>Tab Navigation"]
+        Page --> UploadTab["Upload Tab"]
+        Page --> SearchTab["Search Tab"]
+        UploadTab --> USection["UploadSection"]
+        USection --> FDZ["FileDropZone"]
+        SearchTab --> SSection["SearchSection"]
+        SearchTab --> RSection["ResultsSection"]
+        RSection --> RC["ResultCard"]
+        RC --> RB["RelevanceBadge"]
+        RC --> RS["RiskScore"]
+    end
+
+    subgraph Backend["Backend (Express)"]
+        Upload["POST /api/upload"]
+        Search["POST /api/search"]
+    end
+
+    USection -->|"fetch /api/upload"| Upload
+    SSection -->|"fetch /api/search"| Search
 ```
 
 ## Upload Flow
@@ -46,19 +101,22 @@ User uploads a CSV/XLSX file. The backend parses it, generates embeddings, and s
 ```mermaid
 sequenceDiagram
     participant User
+    participant Frontend
     participant API as Express API
     participant Parser
     participant OpenAI
     participant Pinecone
 
-    User->>API: POST /api/upload (file)
+    User->>Frontend: Drop file in Upload tab
+    Frontend->>API: POST /api/upload (file)
     API->>Parser: parseFile(filePath)
     Parser-->>API: string[] (test cases)
     API->>OpenAI: embedBatch(testCases)
     OpenAI-->>API: number[][] (vectors)
     API->>Pinecone: buildIndex(vectors, texts)
     Pinecone-->>API: success
-    API-->>User: { success: true, count: 30 }
+    API-->>Frontend: { success: true, count: 30 }
+    Frontend-->>User: "30 test cases indexed"
 ```
 
 ## Search Flow
@@ -68,19 +126,22 @@ User types a user story. The backend embeds it, finds similar test cases, and as
 ```mermaid
 sequenceDiagram
     participant User
+    participant Frontend
     participant API as Express API
     participant OpenAI
     participant Pinecone
     participant Claude
 
-    User->>API: POST /api/search { userStory }
+    User->>Frontend: Enter story in Search tab
+    Frontend->>API: POST /api/search { userStory, topK }
     API->>OpenAI: embed(userStory)
     OpenAI-->>API: number[] (query vector)
     API->>Pinecone: queryIndex(vector, topK)
     Pinecone-->>API: matched test cases + scores
     API->>Claude: explainMatches(story, matches)
     Claude-->>API: relevance + risk + reasons
-    API-->>User: { results: ExplainResult[] }
+    API-->>Frontend: { results: ExplainResult[] }
+    Frontend-->>User: Ranked result cards
 ```
 
 ## Service Layer
@@ -136,6 +197,16 @@ npm run dev
 
 Server starts at `http://localhost:3000`
 
+### Run the Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+App starts at `http://localhost:3001`. API requests are proxied to the backend on port 3000.
+
 ## API Reference
 
 ### `POST /api/upload`
@@ -183,8 +254,9 @@ Health check endpoint.
 
 | Component   | Technology |
 |-------------|-----------|
-| Runtime     | Node.js + TypeScript |
-| Server      | Express.js |
+| Frontend    | Next.js 16, React 19, TypeScript |
+| Styling     | Tailwind CSS 4 |
+| Backend     | Express.js, TypeScript |
 | Embeddings  | OpenAI text-embedding-3-small |
 | Vector DB   | Pinecone |
 | LLM         | Anthropic Claude (claude-haiku-4-5) |
