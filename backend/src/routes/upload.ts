@@ -58,11 +58,12 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     const vectors = await embedBatch(texts);
     console.log(`[Upload] Generated ${vectors.length} embeddings`);
 
-    // 3. Upsert into Pinecone (with module metadata)
-    await buildIndex(vectors, testCases);
-    console.log(`[Upload] Indexed ${vectors.length} vectors in Pinecone`);
+    // 3. Upsert into Pinecone (with module metadata and source filename)
+    const source = file.originalname;
+    await buildIndex(vectors, testCases, source);
+    console.log(`[Upload] Indexed ${vectors.length} vectors in Pinecone (source: ${source})`);
 
-    res.json({ success: true, count: testCases.length });
+    res.json({ success: true, count: testCases.length, source });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error during upload processing";
     console.error(`[Upload] Error: ${message}`);

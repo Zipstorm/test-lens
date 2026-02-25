@@ -80,7 +80,8 @@ function printResults(userStory: string, results: ExplainResult[]) {
     const r = results[i];
     const color = relevanceColor(r.relevance);
     const moduleTag = r.module ? ` ${MAGENTA}[${r.module}]${RESET}` : "";
-    console.log(`${BOLD}  ${i + 1}. ${r.testCase}${RESET}${moduleTag}`);
+    const sourceTag = r.source ? ` ${DIM}← ${r.source}${RESET}` : "";
+    console.log(`${BOLD}  ${i + 1}. ${r.testCase}${RESET}${moduleTag}${sourceTag}`);
     console.log(`     Relevance: ${color}${BOLD}${r.relevance.toUpperCase()}${RESET}`);
     console.log(`     Risk:      ${riskBar(r.riskScore)}`);
     console.log(`     Reason:    ${DIM}${r.reason}${RESET}`);
@@ -105,9 +106,11 @@ async function handleUpload() {
   const vectors = await embedBatch(texts);
   console.log(`  Generated ${BOLD}${vectors.length}${RESET} embeddings`);
 
-  console.log(`${DIM}Indexing in Pinecone...${RESET}`);
-  await buildIndex(vectors, testCases);
-  console.log(`  ${GREEN}${BOLD}✓ Indexed ${testCases.length} test cases successfully${RESET}\n`);
+  const source = path.basename(filePath);
+  console.log(`${DIM}Indexing in Pinecone (source: ${source})...${RESET}`);
+  await buildIndex(vectors, testCases, source);
+  console.log(`  ${GREEN}${BOLD}✓ Indexed ${testCases.length} test cases successfully${RESET}`);
+  console.log(`  ${DIM}Source tagged as: ${source}${RESET}\n`);
 }
 
 async function handleSearch() {

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Pinecone, type Index } from "@pinecone-database/pinecone";
 import type { TestCase } from "./parser";
 
@@ -8,7 +9,16 @@ let ready = false;
 export interface MatchResult {
   text: string;
   module?: string;
+  source?: string;
   score: number;
+}
+
+/**
+ * Generate a stable, deterministic ID from the test case text.
+ * Same text always produces the same ID — prevents duplicates across uploads.
+ */
+function hashId(text: string): string {
+  return crypto.createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
 
 /**
@@ -30,12 +40,17 @@ export async function initIndex(): Promise<void> {
 }
 
 /**
- * Upsert test case vectors into Pinecone.
- * Each vector is stored with its text and optional module as metadata.
+ * Upsert test case vectors into Pinecone (accumulate mode).
+ *
+ * IDs are derived from the test case text content (SHA-256 hash).
+ * - Same text across files → same ID → no duplicates
+ * - Different text → different ID → accumulates alongside existing vectors
+ * - Re-uploading same file → same hashes → safely overwrites itself
  */
 export async function buildIndex(
   vectors: number[][],
-  testCases: TestCase[]
+  testCases: TestCase[],
+  source?: string
 ): Promise<void> {
   if (!index) throw new Error("Pinecone index not initialized. Call initIndex() first.");
 
@@ -48,7 +63,14 @@ export async function buildIndex(
       if (tc.module) {
         metadata.module = tc.module;
       }
-      return { id: `tc-${i + j}`, values, metadata };
+      if (source) {
+        metadata.source = source;
+      }
+      return {
+        id: hashId(tc.text),
+        values,
+        metadata,
+      };
     });
 
     await index.upsert(batch);
@@ -59,7 +81,7 @@ export async function buildIndex(
 
 /**
  * Query the Pinecone index for the most similar vectors.
- * Returns matched test case texts with similarity scores and module info.
+ * Returns matched test case texts with similarity scores, module, and source.
  */
 export async function queryIndex(
   vector: number[],
@@ -74,10 +96,11 @@ export async function queryIndex(
   });
 
   return (result.matches || []).map((match) => {
-    const meta = match.metadata as { text: string; module?: string } | undefined;
+    const meta = match.metadata as { text: string; module?: string; source?: string } | undefined;
     return {
       text: meta?.text ?? "",
       module: meta?.module,
+      source: meta?.source,
       score: match.score ?? 0,
     };
   });

@@ -7,6 +7,7 @@ const MAX_TOKENS = 1024;
 export interface ExplainResult {
   testCase: string;
   module?: string;
+  source?: string;
   relevance: "high" | "medium" | "low";
   riskScore: number;
   reason: string;
@@ -82,8 +83,9 @@ export async function explainMatches(
 
   const parsed: ExplainResult[] = JSON.parse(jsonStr);
 
-  // Validate structure
-  for (const item of parsed) {
+  // Validate structure and enrich with metadata from original matches
+  for (let i = 0; i < parsed.length; i++) {
+    const item = parsed[i];
     if (
       typeof item.testCase !== "string" ||
       !["high", "medium", "low"].includes(item.relevance) ||
@@ -93,6 +95,13 @@ export async function explainMatches(
       typeof item.reason !== "string"
     ) {
       throw new Error("Invalid response structure from Claude");
+    }
+    // Attach source and module from the original Pinecone match
+    if (i < matches.length) {
+      item.source = matches[i].source;
+      if (!item.module && matches[i].module) {
+        item.module = matches[i].module;
+      }
     }
   }
 
