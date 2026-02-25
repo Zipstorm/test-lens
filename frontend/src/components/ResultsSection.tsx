@@ -23,8 +23,12 @@ export default function ResultsSection({
 
   if (status === "idle") return null;
 
+  const relevanceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const sortedResults = [...results].sort(
+    (a, b) => (relevanceOrder[a.relevance] ?? 3) - (relevanceOrder[b.relevance] ?? 3)
+  );
   const filteredResults =
-    filter === "all" ? results : results.filter((r) => r.relevance === filter);
+    filter === "all" ? sortedResults : sortedResults.filter((r) => r.relevance === filter);
 
   const filterOptions: { value: RelevanceFilter; label: string }[] = [
     { value: "all", label: "All" },
