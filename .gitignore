@@ -8,6 +8,7 @@ node_modules/
 # Build output
 dist/
 build/
+frontend/.next/
 
 # Uploads (temp files)
 backend/uploads/*
