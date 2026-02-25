@@ -1,0 +1,31 @@
+ID,Description,Module,Priority
+TC-001,Verify user can log in with valid credentials,Authentication,High
+TC-002,Verify error message on invalid password,Authentication,High
+TC-003,Verify password reset email is sent,Authentication,Medium
+TC-004,Verify session timeout after 30 minutes of inactivity,Authentication,Medium
+TC-005,Verify user can add item to shopping cart,Cart,High
+TC-006,Verify cart total updates when quantity is changed,Cart,High
+TC-007,Verify item can be removed from cart,Cart,Medium
+TC-008,Verify cart persists after browser refresh,Cart,Medium
+TC-009,Verify checkout flow with valid credit card,Payments,High
+TC-010,Verify order confirmation email is sent after purchase,Payments,High
+TC-011,Verify declined card shows appropriate error,Payments,High
+TC-012,Verify coupon code applies discount correctly,Payments,Medium
+TC-013,Verify product search returns relevant results,Search,High
+TC-014,Verify search filters by category work correctly,Search,Medium
+TC-015,Verify search autocomplete suggestions appear,Search,Low
+TC-016,Verify user profile update saves correctly,Profile,Medium
+TC-017,Verify shipping address can be added and edited,Profile,Medium
+TC-018,Verify order history displays past purchases,Profile,Low
+TC-019,Verify product page displays correct price and description,Catalog,High
+TC-020,Verify product image gallery loads all images,Catalog,Medium
+TC-021,Verify out-of-stock items show unavailable badge,Catalog,Medium
+TC-022,Verify related products section shows relevant items,Catalog,Low
+TC-023,Verify email notifications for order status changes,Notifications,Medium
+TC-024,Verify push notification opt-in and opt-out,Notifications,Low
+TC-025,Verify admin can update product inventory,Admin,High
+TC-026,Verify admin can view sales dashboard,Admin,Medium
+TC-027,Verify multi-factor authentication login flow,Authentication,High
+TC-028,Verify guest checkout without account creation,Payments,Medium
+TC-029,Verify wishlist add and remove functionality,Cart,Low
+TC-030,Verify pagination on product listing page,Catalog,Low

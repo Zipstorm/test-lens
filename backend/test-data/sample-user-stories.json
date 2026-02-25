@@ -1,0 +1,30 @@
+{
+  "description": "Sample user stories for testing the search API. Use these to validate that relevant test cases are returned.",
+  "stories": [
+    {
+      "id": "US-001",
+      "text": "As a user, I want to add a promo code at checkout so I can get a discount on my order",
+      "expectedRelevantModules": ["Payments", "Cart"]
+    },
+    {
+      "id": "US-002",
+      "text": "As a user, I want to reset my password so I can regain access to my account",
+      "expectedRelevantModules": ["Authentication"]
+    },
+    {
+      "id": "US-003",
+      "text": "As a user, I want to search for products and filter by category",
+      "expectedRelevantModules": ["Search", "Catalog"]
+    },
+    {
+      "id": "US-004",
+      "text": "As a user, I want to buy an item as a guest without creating an account",
+      "expectedRelevantModules": ["Payments", "Cart"]
+    },
+    {
+      "id": "US-005",
+      "text": "As an admin, I want to update product stock levels so customers see accurate availability",
+      "expectedRelevantModules": ["Admin", "Catalog"]
+    }
+  ]
+}
