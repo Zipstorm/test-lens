@@ -23,12 +23,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV BACKEND_URL=http://backend:3000
 
+# Ensure public dir exists in builder (may not exist in all projects)
+RUN mkdir -p /tmp/empty
+
 # Copy only what's needed for production
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/public ./public 2>/dev/null || true
 
 EXPOSE 3001
 
