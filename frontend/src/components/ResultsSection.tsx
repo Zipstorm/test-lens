@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import ResultCard from "./ResultCard";
 import type { SearchResult } from "../types";
+
+type RelevanceFilter = "all" | "high" | "medium" | "low";
 
 interface ResultsSectionProps {
   results: SearchResult[];
@@ -16,13 +19,42 @@ export default function ResultsSection({
   error,
   userStory,
 }: ResultsSectionProps) {
+  const [filter, setFilter] = useState<RelevanceFilter>("all");
+
   if (status === "idle") return null;
+
+  const filteredResults =
+    filter === "all" ? results : results.filter((r) => r.relevance === filter);
+
+  const filterOptions: { value: RelevanceFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "high", label: "High" },
+    { value: "medium", label: "Medium" },
+    { value: "low", label: "Low" },
+  ];
 
   return (
     <section>
-      <h2 className="mb-3 text-lg font-semibold text-foreground">
-        Results
-      </h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Results</h2>
+        {status === "done" && results.length > 0 && (
+          <div className="flex gap-1">
+            {filterOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilter(opt.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  filter === opt.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {status === "searching" && (
         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-8">
@@ -76,8 +108,11 @@ export default function ResultsSection({
           <p className="mb-4 text-sm text-slate-500">
             Found{" "}
             <span className="font-medium text-slate-700">
-              {results.length}
+              {filteredResults.length}
             </span>{" "}
+            {filter !== "all" && (
+              <span className="font-medium text-slate-700">{filter} relevance </span>
+            )}
             relevant tests for{" "}
             <span className="font-medium text-slate-700">
               &ldquo;
@@ -87,16 +122,24 @@ export default function ResultsSection({
               &rdquo;
             </span>
           </p>
-          <div className="space-y-3">
-            {results.map((result, i) => (
-              <ResultCard
-                key={i}
-                result={result}
-                index={i}
-                defaultExpanded={i < 3}
-              />
-            ))}
-          </div>
+          {filteredResults.length === 0 ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+              <p className="text-sm text-slate-500">
+                No {filter} relevance results found.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredResults.map((result, i) => (
+                <ResultCard
+                  key={i}
+                  result={result}
+                  index={i}
+                  defaultExpanded={i < 3}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
