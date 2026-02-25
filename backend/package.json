@@ -5,7 +5,8 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "npx tsx watch src/server.ts",
-    "start": "npx tsx src/server.ts"
+    "start": "npx tsx src/server.ts",
+    "cli": "npx tsx src/cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
