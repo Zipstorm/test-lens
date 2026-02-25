@@ -1,4 +1,12 @@
-import { UploadResponse, SearchResponse } from "../types";
+import {
+  UploadResponse,
+  SearchResponse,
+  JiraProject,
+  JiraImportResponse,
+  JiraIssuePreview,
+  JiraIssueType,
+  JiraTicketSummary,
+} from "../types";
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
   const formData = new FormData();
@@ -30,6 +38,123 @@ export async function searchTestCases(
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Search failed");
+  }
+
+  return res.json();
+}
+
+export async function searchByJiraKey(
+  jiraKey: string,
+  topK: number = 5
+): Promise<SearchResponse> {
+  const res = await fetch("/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jiraKey, topK }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Jira search failed");
+  }
+
+  return res.json();
+}
+
+export async function fetchJiraProjects(): Promise<JiraProject[]> {
+  const res = await fetch("/api/jira/projects");
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch Jira projects");
+  }
+
+  const data = await res.json();
+  return data.projects;
+}
+
+export async function fetchIssueTypes(
+  projectKey: string
+): Promise<JiraIssueType[]> {
+  const res = await fetch(
+    `/api/jira/projects/${encodeURIComponent(projectKey)}/issue-types`
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch issue types");
+  }
+
+  const data = await res.json();
+  return data.issueTypes;
+}
+
+export async function fetchTicketsByType(
+  projectKey: string,
+  issueType: string,
+  maxResults: number = 50
+): Promise<JiraTicketSummary[]> {
+  const params = new URLSearchParams({
+    issueType,
+    maxResults: String(maxResults),
+  });
+  const res = await fetch(
+    `/api/jira/projects/${encodeURIComponent(projectKey)}/tickets?${params}`
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch tickets");
+  }
+
+  const data = await res.json();
+  return data.tickets;
+}
+
+export async function importFromJira(
+  projectKey: string,
+  maxResults: number = 100,
+  parentTicketKey?: string
+): Promise<JiraImportResponse> {
+  const res = await fetch("/api/jira/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectKey, maxResults, parentTicketKey }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Jira import failed");
+  }
+
+  return res.json();
+}
+
+export async function importFromXray(
+  projectKey: string,
+  maxResults: number = 100,
+  parentTicketKey?: string
+): Promise<JiraImportResponse> {
+  const res = await fetch("/api/jira/xray-import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectKey, maxResults, parentTicketKey }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Xray import failed");
+  }
+
+  return res.json();
+}
+
+export async function fetchJiraIssue(issueKey: string): Promise<JiraIssuePreview> {
+  const res = await fetch(`/api/jira/issue/${encodeURIComponent(issueKey)}`);
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch Jira issue");
   }
 
   return res.json();

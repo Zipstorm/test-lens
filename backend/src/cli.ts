@@ -7,6 +7,15 @@ import { parseFile, enrichForEmbedding } from "./services/parser";
 import { embedBatch, embed } from "./services/embedder";
 import { initIndex, buildIndex, queryIndex, isIndexReady } from "./services/vectorStore";
 import { explainMatches, type ExplainResult } from "./services/llm";
+import {
+  listProjects,
+  fetchTestCases,
+  fetchIssue,
+  issueToTestCase,
+  issueToSearchText,
+  parseIssueKey,
+} from "./services/jira";
+import { fetchXrayTests, xrayTestToTestCase } from "./services/xray";
 
 // ANSI colors
 const BOLD = "\x1b[1m";
@@ -40,9 +49,12 @@ ${CYAN}${BOLD}╔═════════════════════
 
 function printMenu() {
   console.log(`${BOLD}Choose an action:${RESET}`);
-  console.log(`  ${GREEN}1)${RESET} upload  — Index test cases from a CSV/XLSX file`);
-  console.log(`  ${GREEN}2)${RESET} search  — Find relevant tests for a user story`);
-  console.log(`  ${GREEN}3)${RESET} exit    — Quit`);
+  console.log(`  ${GREEN}1)${RESET} upload       — Index test cases from a CSV/XLSX file`);
+  console.log(`  ${GREEN}2)${RESET} jira-import  — Import test cases from a Jira project`);
+  console.log(`  ${GREEN}3)${RESET} xray-import  — Import from Xray (with steps & preconditions)`);
+  console.log(`  ${GREEN}4)${RESET} search       — Find relevant tests for a user story`);
+  console.log(`  ${GREEN}5)${RESET} jira-search  — Find relevant tests from a Jira issue key`);
+  console.log(`  ${GREEN}6)${RESET} exit         — Quit`);
   console.log();
 }
 
@@ -113,6 +125,92 @@ async function handleUpload() {
   console.log(`  ${DIM}Source tagged as: ${source}${RESET}\n`);
 }
 
+async function handleJiraImport() {
+  console.log(`\n${DIM}Fetching Jira projects...${RESET}`);
+  const projects = await listProjects();
+
+  console.log(`\n${BOLD}Available projects:${RESET}`);
+  for (let i = 0; i < projects.length; i++) {
+    console.log(`  ${GREEN}${i + 1})${RESET} ${BOLD}${projects[i].key}${RESET} — ${projects[i].name}`);
+  }
+  console.log();
+
+  const input = await ask(
+    `${BOLD}Project key${RESET} ${DIM}(Enter for QA)${RESET}: `
+  );
+  const projectKey = input.trim().toUpperCase() || "QA";
+
+  const maxInput = await ask(
+    `${BOLD}Max issues to import${RESET} ${DIM}(Enter for 100)${RESET}: `
+  );
+  const maxResults = Math.min(Math.max(Number(maxInput) || 100, 1), 500);
+
+  console.log(`\n${DIM}Fetching test cases from ${projectKey}...${RESET}`);
+  const issues = await fetchTestCases(projectKey, maxResults);
+
+  if (issues.length === 0) {
+    console.log(`${YELLOW}  No test case issues found in project ${projectKey}.${RESET}\n`);
+    return;
+  }
+
+  console.log(`  Found ${BOLD}${issues.length}${RESET} test case issues`);
+
+  // Convert to TestCase objects and index
+  const testCases = issues.map(issueToTestCase);
+  const moduleCount = testCases.filter((tc) => tc.module).length;
+  console.log(`  ${DIM}(${moduleCount} with module info from labels)${RESET}`);
+
+  console.log(`${DIM}Generating embeddings (enriched with module context)...${RESET}`);
+  const enrichedTexts = testCases.map(enrichForEmbedding);
+  const vectors = await embedBatch(enrichedTexts);
+  console.log(`  Generated ${BOLD}${vectors.length}${RESET} embeddings`);
+
+  const source = `jira:${projectKey}`;
+  console.log(`${DIM}Indexing in Pinecone (source: ${source})...${RESET}`);
+  await buildIndex(vectors, testCases, source);
+  console.log(`  ${GREEN}${BOLD}✓ Indexed ${testCases.length} test cases from Jira${RESET}`);
+  console.log(`  ${DIM}Source tagged as: ${source}${RESET}\n`);
+}
+
+async function handleXrayImport() {
+  const input = await ask(
+    `${BOLD}Project key${RESET} ${DIM}(Enter for QA)${RESET}: `
+  );
+  const projectKey = input.trim().toUpperCase() || "QA";
+
+  const maxInput = await ask(
+    `${BOLD}Max tests to import${RESET} ${DIM}(Enter for 100)${RESET}: `
+  );
+  const maxResults = Math.min(Math.max(Number(maxInput) || 100, 1), 500);
+
+  console.log(`\n${DIM}Fetching Xray tests from ${projectKey} (with steps & preconditions)...${RESET}`);
+  const xrayTests = await fetchXrayTests(projectKey, maxResults);
+
+  if (xrayTests.length === 0) {
+    console.log(`${YELLOW}  No Xray tests found in project ${projectKey}.${RESET}\n`);
+    return;
+  }
+
+  const stepCount = xrayTests.reduce((sum, t) => sum + t.steps.length, 0);
+  const pcCount = xrayTests.reduce((sum, t) => sum + t.preconditions.length, 0);
+  console.log(`  Found ${BOLD}${xrayTests.length}${RESET} tests (${stepCount} steps, ${pcCount} preconditions)`);
+
+  const testCases = xrayTests.map(xrayTestToTestCase);
+  const moduleCount = testCases.filter((tc) => tc.module).length;
+  console.log(`  ${DIM}(${moduleCount} with module info from folders/labels)${RESET}`);
+
+  console.log(`${DIM}Generating embeddings (enriched with steps & module context)...${RESET}`);
+  const enrichedTexts = testCases.map(enrichForEmbedding);
+  const vectors = await embedBatch(enrichedTexts);
+  console.log(`  Generated ${BOLD}${vectors.length}${RESET} embeddings`);
+
+  const source = `xray:${projectKey}`;
+  console.log(`${DIM}Indexing in Pinecone (source: ${source})...${RESET}`);
+  await buildIndex(vectors, testCases, source);
+  console.log(`  ${GREEN}${BOLD}✓ Indexed ${testCases.length} tests from Xray${RESET}`);
+  console.log(`  ${DIM}Source tagged as: ${source}${RESET}\n`);
+}
+
 async function handleSearch() {
   if (!isIndexReady()) {
     console.log(`\n${RED}Index not ready. Upload a file first.${RESET}\n`);
@@ -139,6 +237,56 @@ async function handleSearch() {
   const results = await explainMatches(userStory.trim(), matches);
 
   printResults(userStory.trim(), results);
+}
+
+async function handleJiraSearch() {
+  if (!isIndexReady()) {
+    console.log(`\n${RED}Index not ready. Upload or import test cases first.${RESET}\n`);
+    return;
+  }
+
+  const input = await ask(
+    `${BOLD}Jira issue key or URL${RESET} ${DIM}(e.g., QA-123 or https://...atlassian.net/browse/QA-123)${RESET}: `
+  );
+  if (!input.trim()) {
+    console.log(`${RED}Issue key cannot be empty.${RESET}\n`);
+    return;
+  }
+
+  let issueKey: string;
+  try {
+    issueKey = parseIssueKey(input.trim());
+  } catch (err) {
+    console.log(`${RED}${err instanceof Error ? err.message : "Invalid issue key"}${RESET}\n`);
+    return;
+  }
+
+  console.log(`\n${DIM}Fetching Jira issue ${issueKey}...${RESET}`);
+  const issue = await fetchIssue(issueKey);
+  const searchText = issueToSearchText(issue);
+
+  console.log(`  ${BOLD}Summary:${RESET} ${issue.summary}`);
+  if (issue.description) {
+    const descPreview = issue.description.length > 120
+      ? issue.description.slice(0, 120) + "..."
+      : issue.description;
+    console.log(`  ${BOLD}Description:${RESET} ${DIM}${descPreview}${RESET}`);
+  }
+
+  const topKInput = await ask(`\n${BOLD}Top K results${RESET} ${DIM}(Enter for 5)${RESET}: `);
+  const topK = Math.min(Math.max(Number(topKInput) || 5, 1), 20);
+
+  console.log(`\n${DIM}Embedding Jira issue text...${RESET}`);
+  const queryVector = await embed(searchText);
+
+  console.log(`${DIM}Searching vector index...${RESET}`);
+  const matches = await queryIndex(queryVector, topK);
+  console.log(`  Found ${BOLD}${matches.length}${RESET} matches`);
+
+  console.log(`${DIM}Asking Claude to analyze relevance...${RESET}`);
+  const results = await explainMatches(searchText, matches);
+
+  printResults(issue.summary, results);
 }
 
 async function main() {
@@ -169,6 +317,26 @@ async function main() {
         break;
 
       case "2":
+      case "jira-import":
+        try {
+          await handleJiraImport();
+        } catch (err) {
+          console.error(`\n${RED}Jira import failed:${RESET}`, err instanceof Error ? err.message : err);
+          console.log();
+        }
+        break;
+
+      case "3":
+      case "xray-import":
+        try {
+          await handleXrayImport();
+        } catch (err) {
+          console.error(`\n${RED}Xray import failed:${RESET}`, err instanceof Error ? err.message : err);
+          console.log();
+        }
+        break;
+
+      case "4":
       case "search":
         try {
           await handleSearch();
@@ -178,7 +346,17 @@ async function main() {
         }
         break;
 
-      case "3":
+      case "5":
+      case "jira-search":
+        try {
+          await handleJiraSearch();
+        } catch (err) {
+          console.error(`\n${RED}Jira search failed:${RESET}`, err instanceof Error ? err.message : err);
+          console.log();
+        }
+        break;
+
+      case "6":
       case "exit":
       case "quit":
       case "q":
@@ -187,7 +365,7 @@ async function main() {
         process.exit(0);
 
       default:
-        console.log(`${YELLOW}Unknown option. Pick 1, 2, or 3.${RESET}\n`);
+        console.log(`${YELLOW}Unknown option. Pick 1-6.${RESET}\n`);
     }
   }
 }

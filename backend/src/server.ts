@@ -6,6 +6,7 @@ import path from "path";
 import { initIndex } from "./services/vectorStore";
 import uploadRouter from "./routes/upload";
 import searchRouter from "./routes/search";
+import jiraRouter from "./routes/jira";
 
 const PORT = process.env.PORT || 3000;
 
@@ -29,6 +30,7 @@ async function main() {
   // API routes
   app.use("/api/upload", uploadRouter);
   app.use("/api/search", searchRouter);
+  app.use("/api/jira", jiraRouter);
 
   // Health check
   app.get("/api/health", (_req, res) => {

@@ -12,5 +12,36 @@ export interface UploadResponse {
 
 export interface SearchResponse {
   userStory: string;
+  jiraKey?: string;
+  jiraSummary?: string;
   results: SearchResult[];
+}
+
+export interface JiraProject {
+  key: string;
+  name: string;
+}
+
+export interface JiraImportResponse {
+  success: boolean;
+  count: number;
+  source: string;
+}
+
+export interface JiraIssuePreview {
+  key: string;
+  summary: string;
+  description: string | null;
+  searchText: string;
+}
+
+export interface JiraIssueType {
+  id: string;
+  name: string;
+  subtask: boolean;
+}
+
+export interface JiraTicketSummary {
+  key: string;
+  summary: string;
 }
