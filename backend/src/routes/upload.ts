@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { parseFile } from "../services/parser";
+import { parseFile, enrichForEmbedding } from "../services/parser";
 import { embedBatch } from "../services/embedder";
 import { buildIndex } from "../services/vectorStore";
 
@@ -53,9 +53,9 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     const testCases = parseFile(file.path);
     console.log(`[Upload] Parsed ${testCases.length} test cases`);
 
-    // 2. Generate embeddings in a single batch call (embed only the text)
-    const texts = testCases.map((tc) => tc.text);
-    const vectors = await embedBatch(texts);
+    // 2. Generate embeddings using enriched text (module + description for better context)
+    const enrichedTexts = testCases.map(enrichForEmbedding);
+    const vectors = await embedBatch(enrichedTexts);
     console.log(`[Upload] Generated ${vectors.length} embeddings`);
 
     // 3. Upsert into Pinecone (with module metadata and source filename)

@@ -3,7 +3,7 @@ dotenv.config();
 
 import readline from "readline";
 import path from "path";
-import { parseFile } from "./services/parser";
+import { parseFile, enrichForEmbedding } from "./services/parser";
 import { embedBatch, embed } from "./services/embedder";
 import { initIndex, buildIndex, queryIndex, isIndexReady } from "./services/vectorStore";
 import { explainMatches, type ExplainResult } from "./services/llm";
@@ -101,9 +101,9 @@ async function handleUpload() {
   console.log(`  Found ${BOLD}${testCases.length}${RESET} test cases` +
     (moduleCount > 0 ? ` (${moduleCount} with module info)` : ""));
 
-  console.log(`${DIM}Generating embeddings...${RESET}`);
-  const texts = testCases.map((tc) => tc.text);
-  const vectors = await embedBatch(texts);
+  console.log(`${DIM}Generating embeddings (enriched with module context)...${RESET}`);
+  const enrichedTexts = testCases.map(enrichForEmbedding);
+  const vectors = await embedBatch(enrichedTexts);
   console.log(`  Generated ${BOLD}${vectors.length}${RESET} embeddings`);
 
   const source = path.basename(filePath);

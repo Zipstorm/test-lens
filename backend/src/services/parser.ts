@@ -76,3 +76,15 @@ export function parseFile(filePath: string): TestCase[] {
 
   return testCases;
 }
+
+/**
+ * Build enriched text for embedding by combining module + description.
+ * This gives the embedding model more context for better semantic matching.
+ *
+ * Examples:
+ *   { text: "Verify login", module: "Auth" }  → "[Auth] Verify login"
+ *   { text: "Verify login" }                   → "Verify login"
+ */
+export function enrichForEmbedding(tc: TestCase): string {
+  return tc.module ? `[${tc.module}] ${tc.text}` : tc.text;
+}
