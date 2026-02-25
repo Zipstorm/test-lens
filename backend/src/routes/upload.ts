@@ -49,15 +49,16 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
   }
 
   try {
-    // 1. Parse test cases from file
+    // 1. Parse test cases from file (now returns TestCase objects with module)
     const testCases = parseFile(file.path);
     console.log(`[Upload] Parsed ${testCases.length} test cases`);
 
-    // 2. Generate embeddings in a single batch call
-    const vectors = await embedBatch(testCases);
+    // 2. Generate embeddings in a single batch call (embed only the text)
+    const texts = testCases.map((tc) => tc.text);
+    const vectors = await embedBatch(texts);
     console.log(`[Upload] Generated ${vectors.length} embeddings`);
 
-    // 3. Upsert into Pinecone
+    // 3. Upsert into Pinecone (with module metadata)
     await buildIndex(vectors, testCases);
     console.log(`[Upload] Indexed ${vectors.length} vectors in Pinecone`);
 

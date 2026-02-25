@@ -1,8 +1,15 @@
 import { Pinecone, type Index } from "@pinecone-database/pinecone";
+import type { TestCase } from "./parser";
 
 let pinecone: Pinecone | null = null;
 let index: Index | null = null;
 let ready = false;
+
+export interface MatchResult {
+  text: string;
+  module?: string;
+  score: number;
+}
 
 /**
  * Connect to Pinecone and get a reference to the configured index.
@@ -24,22 +31,25 @@ export async function initIndex(): Promise<void> {
 
 /**
  * Upsert test case vectors into Pinecone.
- * Each vector is stored with its original text as metadata.
+ * Each vector is stored with its text and optional module as metadata.
  */
 export async function buildIndex(
   vectors: number[][],
-  texts: string[]
+  testCases: TestCase[]
 ): Promise<void> {
   if (!index) throw new Error("Pinecone index not initialized. Call initIndex() first.");
 
   const BATCH_SIZE = 100;
 
   for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
-    const batch = vectors.slice(i, i + BATCH_SIZE).map((values, j) => ({
-      id: `tc-${i + j}`,
-      values,
-      metadata: { text: texts[i + j] },
-    }));
+    const batch = vectors.slice(i, i + BATCH_SIZE).map((values, j) => {
+      const tc = testCases[i + j];
+      const metadata: Record<string, string> = { text: tc.text };
+      if (tc.module) {
+        metadata.module = tc.module;
+      }
+      return { id: `tc-${i + j}`, values, metadata };
+    });
 
     await index.upsert(batch);
   }
@@ -49,12 +59,12 @@ export async function buildIndex(
 
 /**
  * Query the Pinecone index for the most similar vectors.
- * Returns matched test case texts with similarity scores.
+ * Returns matched test case texts with similarity scores and module info.
  */
 export async function queryIndex(
   vector: number[],
   topK: number
-): Promise<{ text: string; score: number }[]> {
+): Promise<MatchResult[]> {
   if (!index) throw new Error("Pinecone index not initialized. Call initIndex() first.");
 
   const result = await index.query({
@@ -63,10 +73,14 @@ export async function queryIndex(
     includeMetadata: true,
   });
 
-  return (result.matches || []).map((match) => ({
-    text: (match.metadata as { text: string })?.text ?? "",
-    score: match.score ?? 0,
-  }));
+  return (result.matches || []).map((match) => {
+    const meta = match.metadata as { text: string; module?: string } | undefined;
+    return {
+      text: meta?.text ?? "",
+      module: meta?.module,
+      score: match.score ?? 0,
+    };
+  });
 }
 
 /**

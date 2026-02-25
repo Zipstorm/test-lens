@@ -16,6 +16,7 @@ const YELLOW = "\x1b[33m";
 const RED = "\x1b[31m";
 const CYAN = "\x1b[36m";
 const DIM = "\x1b[2m";
+const MAGENTA = "\x1b[35m";
 
 const DEFAULT_FILE = path.join(__dirname, "../test-data/sample-tests.csv");
 
@@ -78,7 +79,8 @@ function printResults(userStory: string, results: ExplainResult[]) {
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     const color = relevanceColor(r.relevance);
-    console.log(`${BOLD}  ${i + 1}. ${r.testCase}${RESET}`);
+    const moduleTag = r.module ? ` ${MAGENTA}[${r.module}]${RESET}` : "";
+    console.log(`${BOLD}  ${i + 1}. ${r.testCase}${RESET}${moduleTag}`);
     console.log(`     Relevance: ${color}${BOLD}${r.relevance.toUpperCase()}${RESET}`);
     console.log(`     Risk:      ${riskBar(r.riskScore)}`);
     console.log(`     Reason:    ${DIM}${r.reason}${RESET}`);
@@ -94,10 +96,13 @@ async function handleUpload() {
 
   console.log(`\n${DIM}Parsing file...${RESET}`);
   const testCases = parseFile(filePath);
-  console.log(`  Found ${BOLD}${testCases.length}${RESET} test cases`);
+  const moduleCount = testCases.filter((tc) => tc.module).length;
+  console.log(`  Found ${BOLD}${testCases.length}${RESET} test cases` +
+    (moduleCount > 0 ? ` (${moduleCount} with module info)` : ""));
 
   console.log(`${DIM}Generating embeddings...${RESET}`);
-  const vectors = await embedBatch(testCases);
+  const texts = testCases.map((tc) => tc.text);
+  const vectors = await embedBatch(texts);
   console.log(`  Generated ${BOLD}${vectors.length}${RESET} embeddings`);
 
   console.log(`${DIM}Indexing in Pinecone...${RESET}`);

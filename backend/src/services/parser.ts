@@ -1,15 +1,20 @@
 import * as XLSX from "xlsx";
 
 const DESCRIPTION_HEADERS = ["description", "title", "name", "test case", "test_case", "testcase"];
+const MODULE_HEADERS = ["module", "component", "area", "category", "feature"];
+
+export interface TestCase {
+  text: string;
+  module?: string;
+}
 
 /**
- * Detect which column contains the test case descriptions.
- * Checks headers case-insensitively against a known list.
+ * Find the index of a column whose header matches one of the candidate names.
  */
-function findDescriptionColumn(headers: string[]): number {
+function findColumn(headers: string[], candidates: string[]): number {
   for (let i = 0; i < headers.length; i++) {
     const normalized = headers[i].trim().toLowerCase();
-    if (DESCRIPTION_HEADERS.includes(normalized)) {
+    if (candidates.includes(normalized)) {
       return i;
     }
   }
@@ -17,10 +22,10 @@ function findDescriptionColumn(headers: string[]): number {
 }
 
 /**
- * Parse a CSV or XLSX file and extract test case description strings.
- * Returns a flat array of non-empty description strings.
+ * Parse a CSV or XLSX file and extract test cases with description and optional module.
+ * Returns an array of TestCase objects.
  */
-export function parseFile(filePath: string): string[] {
+export function parseFile(filePath: string): TestCase[] {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
 
@@ -36,30 +41,38 @@ export function parseFile(filePath: string): string[] {
   }
 
   const headers = rows[0].map((h) => String(h));
-  const colIndex = findDescriptionColumn(headers);
+  const descCol = findColumn(headers, DESCRIPTION_HEADERS);
+  const moduleCol = findColumn(headers, MODULE_HEADERS);
 
-  if (colIndex === -1) {
+  if (descCol === -1) {
     throw new Error(
       `Could not find a description column. Expected one of: ${DESCRIPTION_HEADERS.join(", ")}. ` +
         `Found headers: ${headers.join(", ")}`
     );
   }
 
-  const descriptions: string[] = [];
+  const testCases: TestCase[] = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const value = rows[i][colIndex];
-    if (value !== undefined && value !== null) {
-      const text = String(value).trim();
+    const descValue = rows[i][descCol];
+    if (descValue !== undefined && descValue !== null) {
+      const text = String(descValue).trim();
       if (text.length > 0) {
-        descriptions.push(text);
+        const testCase: TestCase = { text };
+        if (moduleCol !== -1) {
+          const modValue = rows[i][moduleCol];
+          if (modValue !== undefined && modValue !== null) {
+            testCase.module = String(modValue).trim();
+          }
+        }
+        testCases.push(testCase);
       }
     }
   }
 
-  if (descriptions.length === 0) {
+  if (testCases.length === 0) {
     throw new Error("No test case descriptions found in the file");
   }
 
-  return descriptions;
+  return testCases;
 }

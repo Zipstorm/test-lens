@@ -1,10 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { MatchResult } from "./vectorStore";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 1024;
 
 export interface ExplainResult {
   testCase: string;
+  module?: string;
   relevance: "high" | "medium" | "low";
   riskScore: number;
   reason: string;
@@ -24,10 +26,13 @@ function getClient(): Anthropic {
  */
 function buildPrompt(
   userStory: string,
-  matches: { text: string; score: number }[]
+  matches: MatchResult[]
 ): string {
   const testCaseList = matches
-    .map((m, i) => `${i + 1}. [score: ${m.score.toFixed(3)}] ${m.text}`)
+    .map((m, i) => {
+      const moduleTag = m.module ? ` [module: ${m.module}]` : "";
+      return `${i + 1}. [score: ${m.score.toFixed(3)}]${moduleTag} ${m.text}`;
+    })
     .join("\n");
 
   return `You are a QA engineer analyzing which regression test cases are relevant to a user story.
@@ -44,7 +49,7 @@ For each test case, determine:
 - reason: A brief explanation of why this test is or isn't relevant
 
 Respond ONLY with a valid JSON array. No markdown, no explanation outside the JSON.
-Each element must have: testCase (string), relevance ("high"|"medium"|"low"), riskScore (number 1-5), reason (string).`;
+Each element must have: testCase (string), module (string or null), relevance ("high"|"medium"|"low"), riskScore (number 1-5), reason (string).`;
 }
 
 /**
@@ -53,7 +58,7 @@ Each element must have: testCase (string), relevance ("high"|"medium"|"low"), ri
  */
 export async function explainMatches(
   userStory: string,
-  matches: { text: string; score: number }[]
+  matches: MatchResult[]
 ): Promise<ExplainResult[]> {
   if (matches.length === 0) return [];
 
