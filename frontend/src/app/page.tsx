@@ -6,6 +6,7 @@ import UploadSection from "../components/UploadSection";
 import JiraImportSection from "../components/JiraImportSection";
 import SearchSection from "../components/SearchSection";
 import ResultsSection from "../components/ResultsSection";
+import SuggestionsSection from "../components/SuggestionsSection";
 import type { SearchResult } from "../types";
 
 type Tab = "upload" | "jira" | "search";
@@ -95,6 +96,12 @@ export default function Home() {
             error={searchError}
             userStory={lastQuery}
           />
+          {searchStatus === "done" && results.length > 0 && (
+            <SuggestionsSection
+              userStory={lastQuery}
+              existingTests={results.map((r) => r.testCase)}
+            />
+          )}
         </div>
       )}
     </main>

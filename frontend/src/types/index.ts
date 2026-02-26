@@ -50,3 +50,9 @@ export interface JiraTicketSummary {
   key: string;
   summary: string;
 }
+
+export interface SuggestedTestCase {
+  title: string;
+  steps: { action: string; expected: string }[];
+  rationale: string;
+}

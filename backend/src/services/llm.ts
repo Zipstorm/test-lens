@@ -3,6 +3,7 @@ import type { MatchResult } from "./vectorStore";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 1024;
+const SUGGEST_MAX_TOKENS = 2048;
 
 export interface ExplainResult {
   testCase: string;
@@ -164,6 +165,81 @@ export async function explainMatches(
       item.folder = match.folder;
       item.steps = match.steps;
       item.preconditions = match.preconditions;
+    }
+  }
+
+  return parsed;
+}
+
+// ---------------------------------------------------------------------------
+// Test case suggestion (gap analysis)
+// ---------------------------------------------------------------------------
+
+export interface SuggestedTestCase {
+  title: string;
+  steps: { action: string; expected: string }[];
+  rationale: string;
+}
+
+/**
+ * Ask Claude to suggest NEW test cases that are missing from the existing suite.
+ * Analyzes the user story against existing tests and identifies coverage gaps.
+ */
+export async function suggestTestCases(
+  userStory: string,
+  existingTests: string[]
+): Promise<SuggestedTestCase[]> {
+  const existingList = existingTests
+    .map((t, i) => `${i + 1}. ${t}`)
+    .join("\n");
+
+  const prompt = `You are an experienced QA engineer. A developer has written the following user story and the test suite already has these existing test cases.
+
+User Story:
+"${userStory}"
+
+Existing Test Cases:
+${existingList || "(none)"}
+
+Analyze the user story and identify 3-5 NEW test cases that should be written but DO NOT already exist.
+Focus on:
+- Edge cases and error scenarios
+- Security and permission boundaries
+- Negative testing (invalid inputs, unauthorized access)
+- Integration points and data validation
+- Accessibility and UX edge cases
+
+For each suggestion, provide:
+- title: A clear, concise test case name
+- steps: Array of { action, expected } pairs describing the test procedure
+- rationale: Why this test is important and what gap it fills
+
+Respond ONLY with a valid JSON array. No markdown, no explanation outside the JSON.`;
+
+  const response = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: SUGGEST_MAX_TOKENS,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const textBlock = response.content.find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No text response from Claude");
+  }
+
+  const raw = textBlock.text.trim();
+  const jsonStr = raw.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+
+  const parsed: SuggestedTestCase[] = JSON.parse(jsonStr);
+
+  // Basic validation
+  for (const item of parsed) {
+    if (
+      typeof item.title !== "string" ||
+      !Array.isArray(item.steps) ||
+      typeof item.rationale !== "string"
+    ) {
+      throw new Error("Invalid suggestion structure from Claude");
     }
   }
 

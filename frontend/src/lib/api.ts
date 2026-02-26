@@ -6,6 +6,7 @@ import {
   JiraIssuePreview,
   JiraIssueType,
   JiraTicketSummary,
+  SuggestedTestCase,
 } from "../types";
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
@@ -158,6 +159,25 @@ export async function fetchJiraIssue(issueKey: string): Promise<JiraIssuePreview
   }
 
   return res.json();
+}
+
+export async function suggestTestCases(
+  userStory: string,
+  existingTests: string[]
+): Promise<SuggestedTestCase[]> {
+  const res = await fetch("/api/search/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userStory, existingTests }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Suggestion failed");
+  }
+
+  const data = await res.json();
+  return data.suggestions;
 }
 
 export async function checkHealth(): Promise<{

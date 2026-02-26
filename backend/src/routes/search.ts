@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { embed } from "../services/embedder";
 import { queryIndex, isIndexReady } from "../services/vectorStore";
-import { explainMatches } from "../services/llm";
+import { explainMatches, suggestTestCases } from "../services/llm";
 import { fetchIssue, issueToSearchText, parseIssueKey } from "../services/jira";
 
 const DEFAULT_TOP_K = 5;
@@ -65,6 +65,30 @@ router.post("/", async (req: Request, res: Response) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error during search";
     console.error(`[Search] Error: ${message}`);
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Suggest new test cases (gap analysis)
+// ---------------------------------------------------------------------------
+
+router.post("/suggest", async (req: Request, res: Response) => {
+  const { userStory, existingTests } = req.body;
+
+  if (!userStory || typeof userStory !== "string" || userStory.trim().length === 0) {
+    res.status(400).json({ error: "userStory is required" });
+    return;
+  }
+
+  const tests: string[] = Array.isArray(existingTests) ? existingTests : [];
+
+  try {
+    const suggestions = await suggestTestCases(userStory.trim(), tests);
+    res.json({ suggestions });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error during suggestion";
+    console.error(`[Suggest] Error: ${message}`);
     res.status(500).json({ error: message });
   }
 });

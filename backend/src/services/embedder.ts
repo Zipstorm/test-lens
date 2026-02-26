@@ -19,6 +19,7 @@ export async function embed(text: string): Promise<number[]> {
   const response = await getClient().embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
+    dimensions: 1536,
   });
   return response.data[0].embedding;
 }
@@ -35,6 +36,7 @@ export async function embedBatch(texts: string[]): Promise<number[][]> {
     const response = await getClient().embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
+      dimensions: 1536,
     });
 
     const sorted = response.data.sort((a, b) => a.index - b.index);
