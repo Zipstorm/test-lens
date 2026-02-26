@@ -69,3 +69,15 @@ export interface SearchHistoryEntry {
   topK: number;
   timestamp: string;
 }
+
+export interface CoverageBreakdown {
+  name: string;
+  count: number;
+}
+
+export interface CoverageData {
+  totalVectors: number;
+  byModule: CoverageBreakdown[];
+  bySource: CoverageBreakdown[];
+  byTestType: CoverageBreakdown[];
+}

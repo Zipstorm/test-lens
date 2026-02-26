@@ -54,14 +54,15 @@ Search pipeline:
 
 | File | Purpose |
 |------|---------|
-| `server.ts` | Express entry point. Mounts 3 routers + health check. Inits Pinecone on startup. |
+| `server.ts` | Express entry point. Mounts 4 routers (upload, search, jira, stats) + health check. Inits Pinecone on startup. |
 | `cli.ts` | Interactive CLI for testing without the frontend |
 | `routes/upload.ts` | `POST /api/upload` — file upload, parse, embed, index |
 | `routes/search.ts` | `POST /api/search` + `POST /api/search/suggest` |
 | `routes/jira.ts` | 7 Jira/Xray endpoints (projects, issue-types, tickets, import, xray-import, etc.) |
 | `services/parser.ts` | CSV/XLSX parsing → `TestCase[]`. Has `enrichForEmbedding()` that prepends `[Module]` to text. |
 | `services/embedder.ts` | `embed()` single + `embedBatch()` multi. Model: `text-embedding-3-small`, dims: 1536. |
-| `services/vectorStore.ts` | Pinecone CRUD. SHA-256 content hash for vector IDs (dedup). `buildIndex()`, `queryIndex()`. Batch upsert 100. |
+| `routes/stats.ts` | `GET /api/stats` (index stats) + `GET /api/stats/coverage` (coverage breakdown by module/source/testType) |
+| `services/vectorStore.ts` | Pinecone CRUD. SHA-256 content hash for vector IDs (dedup). `buildIndex()`, `queryIndex()`, `getIndexStats()`, `getCoverageData()`. Batch upsert 100. |
 | `services/llm.ts` | Claude integration. `explainMatches()` (1024 tokens) + `suggestTestCases()` (2048 tokens). JSON response parsing. |
 | `services/jira.ts` | Jira REST API client. Basic Auth. ADF→plaintext parser. Module derivation from labels. |
 | `services/xray.ts` | Xray GraphQL client. OAuth2 token with 23hr cache. 3 query modes. Rich text conversion. |
@@ -71,7 +72,7 @@ Search pipeline:
 | File | Purpose |
 |------|---------|
 | `app/layout.tsx` | Root layout with Geist fonts, dark mode class on `<html>` |
-| `app/page.tsx` | **Main state container.** 3 tabs (Upload, Jira Import, Search). All search state lives here. |
+| `app/page.tsx` | **Main state container.** 4 tabs (Upload, Jira Import, Search, Insights). All search state lives here. Search history backed by localStorage. |
 | `app/globals.css` | Tailwind config + CSS custom properties for theming |
 | `components/Header.tsx` | App title and tagline |
 | `components/UploadSection.tsx` | CSV/XLSX upload with status handling |
@@ -83,6 +84,9 @@ Search pipeline:
 | `components/RelevanceBadge.tsx` | Color-coded pill (green/yellow/red for high/medium/low) |
 | `components/RiskScore.tsx` | 5-dot visual risk indicator |
 | `components/SuggestionsSection.tsx` | "Suggest Missing Tests" button → shows gap analysis cards |
+| `components/IndexStatsCard.tsx` | Compact stats bar showing indexed vector count + dimension with refresh button |
+| `components/SearchHistory.tsx` | Collapsible "Recent Searches" panel, click to rerun, backed by localStorage |
+| `components/CoverageHeatmap.tsx` | "Insights" tab — coverage breakdown by module/source/testType with horizontal bar charts, 3 summary cards, view mode toggle |
 | `lib/api.ts` | API client — all `fetch()` calls to backend |
 | `types/index.ts` | All frontend TypeScript interfaces |
 
@@ -120,6 +124,10 @@ Search pipeline:
 8. **Dark mode** — Tailwind `dark:` classes throughout. Every component has dark mode variants. Uses `@custom-variant dark (&:where(.dark, .dark *))` in globals.css.
 
 9. **Issue type filter** — JiraImportSection filters to only Epic, Test Plan, Test Set types. This is hardcoded in the `useEffect` that calls `fetchIssueTypes()`.
+
+10. **Coverage heatmap** — uses zero-vector query with `topK=min(totalVectors, 10000)` to pull all vectors from Pinecone, then groups by metadata fields (module, source, testType) server-side. This is a practical hack for a hackathon — a production system would use a proper analytics pipeline.
+
+11. **Search history** — localStorage-backed (`testlens-search-history`), capped at 10 entries, deduped by query text. Rerun uses `externalQuery` prop + `useRef` pending flag pattern to handle React's async state updates before triggering search.
 
 ---
 
@@ -159,6 +167,8 @@ XRAY_CLIENT_SECRET=...
 | `GET` | `/api/jira/issue/:issueKey` | `routes/jira.ts` |
 | `POST` | `/api/jira/import` | `routes/jira.ts` |
 | `POST` | `/api/jira/xray-import` | `routes/jira.ts` |
+| `GET` | `/api/stats` | `routes/stats.ts` |
+| `GET` | `/api/stats/coverage` | `routes/stats.ts` |
 | `GET` | `/api/health` | `server.ts` |
 
 ---
@@ -166,6 +176,8 @@ XRAY_CLIENT_SECRET=...
 ## Commit History (Feature Evolution)
 
 ```
+xxxxxxx feat: add test coverage heatmap as Insights tab with module/source/testType breakdown
+9c3bbf2 feat: add index stats dashboard and search history with localStorage persistence
 c4e8dbb docs: consolidate into single root README with links to detailed docs
 1019250 docs: add comprehensive docs folder with system design, diagrams, and ADRs
 ad2034d feat: add searchable dropdown for ticket picker

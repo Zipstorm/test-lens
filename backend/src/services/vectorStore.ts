@@ -153,3 +153,75 @@ export async function getIndexStats(): Promise<{
     dimension: stats.dimension ?? 0,
   };
 }
+
+export interface CoverageBreakdown {
+  name: string;
+  count: number;
+}
+
+export interface CoverageData {
+  totalVectors: number;
+  byModule: CoverageBreakdown[];
+  bySource: CoverageBreakdown[];
+  byTestType: CoverageBreakdown[];
+}
+
+/**
+ * Fetch all vectors from Pinecone and group them by metadata fields
+ * (module, source, testType) to produce a coverage breakdown.
+ *
+ * Uses a zero-vector query with high topK to pull records for grouping.
+ */
+export async function getCoverageData(): Promise<CoverageData> {
+  if (!index) throw new Error("Pinecone index not initialized. Call initIndex() first.");
+
+  // Get dimension so we can construct a zero vector
+  const stats = await index.describeIndexStats();
+  const dimension = stats.dimension ?? 0;
+  const totalVectors = stats.totalRecordCount ?? 0;
+
+  if (dimension === 0 || totalVectors === 0) {
+    return { totalVectors: 0, byModule: [], bySource: [], byTestType: [] };
+  }
+
+  // Query with a zero vector to fetch up to 10000 vectors with metadata
+  const zeroVector = new Array(dimension).fill(0);
+  const topK = Math.min(totalVectors, 10000);
+
+  const result = await index.query({
+    vector: zeroVector,
+    topK,
+    includeMetadata: true,
+  });
+
+  // Group by metadata fields
+  const moduleCounts: Record<string, number> = {};
+  const sourceCounts: Record<string, number> = {};
+  const testTypeCounts: Record<string, number> = {};
+
+  for (const match of result.matches || []) {
+    const meta = match.metadata as Record<string, string> | undefined;
+
+    const mod = meta?.module || "Uncategorized";
+    moduleCounts[mod] = (moduleCounts[mod] || 0) + 1;
+
+    const src = meta?.source || "Unknown";
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+
+    const tt = meta?.testType || "Untyped";
+    testTypeCounts[tt] = (testTypeCounts[tt] || 0) + 1;
+  }
+
+  // Convert to sorted arrays (descending by count)
+  const toSorted = (counts: Record<string, number>): CoverageBreakdown[] =>
+    Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+  return {
+    totalVectors,
+    byModule: toSorted(moduleCounts),
+    bySource: toSorted(sourceCounts),
+    byTestType: toSorted(testTypeCounts),
+  };
+}

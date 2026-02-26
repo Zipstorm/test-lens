@@ -8,6 +8,7 @@ import {
   JiraTicketSummary,
   SuggestedTestCase,
   IndexStats,
+  CoverageData,
 } from "../types";
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
@@ -187,6 +188,17 @@ export async function fetchIndexStats(): Promise<IndexStats> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Failed to fetch index stats");
+  }
+
+  return res.json();
+}
+
+export async function fetchCoverage(): Promise<CoverageData> {
+  const res = await fetch("/api/stats/coverage");
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch coverage data");
   }
 
   return res.json();

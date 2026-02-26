@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getIndexStats, isIndexReady } from "../services/vectorStore";
+import { getIndexStats, getCoverageData, isIndexReady } from "../services/vectorStore";
 
 const router = Router();
 
@@ -19,6 +19,26 @@ router.get("/", async (_req: Request, res: Response) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error(`[Stats] Error fetching index stats: ${message}`);
+    res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * GET /api/stats/coverage
+ * Returns test case coverage breakdown by module, source, and test type.
+ */
+router.get("/coverage", async (_req: Request, res: Response) => {
+  if (!isIndexReady()) {
+    res.status(503).json({ error: "Pinecone index is not initialized" });
+    return;
+  }
+
+  try {
+    const coverage = await getCoverageData();
+    res.json(coverage);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`[Stats] Error fetching coverage data: ${message}`);
     res.status(500).json({ error: message });
   }
 });

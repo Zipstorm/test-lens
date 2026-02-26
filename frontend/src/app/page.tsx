@@ -9,6 +9,7 @@ import ResultsSection from "../components/ResultsSection";
 import SuggestionsSection from "../components/SuggestionsSection";
 import IndexStatsCard from "../components/IndexStatsCard";
 import SearchHistory from "../components/SearchHistory";
+import CoverageHeatmap from "../components/CoverageHeatmap";
 import type { SearchResult, SearchHistoryEntry } from "../types";
 
 const HISTORY_KEY = "testlens-search-history";
@@ -32,7 +33,7 @@ function saveHistory(history: SearchHistoryEntry[]) {
   }
 }
 
-type Tab = "upload" | "jira" | "search";
+type Tab = "upload" | "jira" | "search" | "insights";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("upload");
@@ -115,6 +116,7 @@ export default function Home() {
     { key: "upload", label: "Upload" },
     { key: "jira", label: "Jira Import" },
     { key: "search", label: "Search" },
+    { key: "insights", label: "Insights" },
   ];
 
   return (
@@ -175,6 +177,8 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {activeTab === "insights" && <CoverageHeatmap />}
     </main>
   );
 }
