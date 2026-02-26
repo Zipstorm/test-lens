@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { searchTestCases } from "../lib/api";
 import type { SearchResult } from "../types";
 
@@ -8,16 +8,54 @@ interface SearchSectionProps {
   onSearchStart: () => void;
   onSearchComplete: (query: string, results: SearchResult[]) => void;
   onSearchError: (message: string) => void;
+  externalQuery?: { query: string; topK: number } | null;
 }
 
 export default function SearchSection({
   onSearchStart,
   onSearchComplete,
   onSearchError,
+  externalQuery,
 }: SearchSectionProps) {
   const [userStory, setUserStory] = useState("");
   const [topK, setTopK] = useState(5);
   const [isSearching, setIsSearching] = useState(false);
+  const pendingRerunRef = useRef(false);
+
+  // Handle rerun from search history
+  useEffect(() => {
+    if (externalQuery && !pendingRerunRef.current) {
+      setUserStory(externalQuery.query);
+      setTopK(externalQuery.topK);
+      pendingRerunRef.current = true;
+    }
+  }, [externalQuery]);
+
+  // Trigger search after state updates from external query
+  useEffect(() => {
+    if (pendingRerunRef.current && userStory && !isSearching) {
+      pendingRerunRef.current = false;
+      triggerSearch(userStory, topK);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userStory, topK]);
+
+  const triggerSearch = useCallback(async (query: string, k: number) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    setIsSearching(true);
+    onSearchStart();
+
+    try {
+      const res = await searchTestCases(trimmed, k);
+      onSearchComplete(trimmed, res.results);
+    } catch (err) {
+      onSearchError(err instanceof Error ? err.message : "Search failed");
+    } finally {
+      setIsSearching(false);
+    }
+  }, [onSearchStart, onSearchComplete, onSearchError]);
 
   const handleSearch = useCallback(async () => {
     const trimmed = userStory.trim();

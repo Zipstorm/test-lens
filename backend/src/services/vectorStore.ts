@@ -136,3 +136,20 @@ export async function queryIndex(
 export function isIndexReady(): boolean {
   return ready;
 }
+
+/**
+ * Retrieve index-level statistics from Pinecone (total vectors, dimension, etc.).
+ */
+export async function getIndexStats(): Promise<{
+  totalVectors: number;
+  dimension: number;
+}> {
+  if (!index) throw new Error("Pinecone index not initialized. Call initIndex() first.");
+
+  const stats = await index.describeIndexStats();
+
+  return {
+    totalVectors: stats.totalRecordCount ?? 0,
+    dimension: stats.dimension ?? 0,
+  };
+}

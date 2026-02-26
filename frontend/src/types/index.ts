@@ -56,3 +56,16 @@ export interface SuggestedTestCase {
   steps: { action: string; expected: string }[];
   rationale: string;
 }
+
+export interface IndexStats {
+  totalVectors: number;
+  dimension: number;
+}
+
+export interface SearchHistoryEntry {
+  id: string;
+  query: string;
+  resultsCount: number;
+  topK: number;
+  timestamp: string;
+}

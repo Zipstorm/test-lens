@@ -1,13 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "../components/Header";
 import UploadSection from "../components/UploadSection";
 import JiraImportSection from "../components/JiraImportSection";
 import SearchSection from "../components/SearchSection";
 import ResultsSection from "../components/ResultsSection";
 import SuggestionsSection from "../components/SuggestionsSection";
-import type { SearchResult } from "../types";
+import IndexStatsCard from "../components/IndexStatsCard";
+import SearchHistory from "../components/SearchHistory";
+import type { SearchResult, SearchHistoryEntry } from "../types";
+
+const HISTORY_KEY = "testlens-search-history";
+const MAX_HISTORY = 10;
+
+function loadHistory(): SearchHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(history: SearchHistoryEntry[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch {
+    // localStorage might be full or unavailable
+  }
+}
 
 type Tab = "upload" | "jira" | "search";
 
@@ -22,6 +45,18 @@ export default function Home() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState("");
 
+  // Search history (localStorage-backed)
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>([]);
+  const [externalQuery, setExternalQuery] = useState<{
+    query: string;
+    topK: number;
+  } | null>(null);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    setSearchHistory(loadHistory());
+  }, []);
+
   const handleUploadComplete = () => {
     setIsUploaded(true);
   };
@@ -35,17 +70,46 @@ export default function Home() {
     setSearchError(null);
   };
 
-  const handleSearchComplete = (query: string, newResults: SearchResult[]) => {
-    setLastQuery(query);
-    setResults(newResults);
-    setSearchStatus("done");
-    setSearchError(null);
-  };
+  const handleSearchComplete = useCallback(
+    (query: string, newResults: SearchResult[]) => {
+      setLastQuery(query);
+      setResults(newResults);
+      setSearchStatus("done");
+      setSearchError(null);
+
+      // Add to search history
+      const entry: SearchHistoryEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        query,
+        resultsCount: newResults.length,
+        topK: newResults.length, // actual returned count
+        timestamp: new Date().toISOString(),
+      };
+
+      setSearchHistory((prev) => {
+        // Deduplicate: remove any existing entry with the same query
+        const filtered = prev.filter((e) => e.query !== query);
+        const updated = [entry, ...filtered].slice(0, MAX_HISTORY);
+        saveHistory(updated);
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleSearchError = (message: string) => {
     setSearchStatus("error");
     setSearchError(message);
   };
+
+  const handleRerun = useCallback((query: string, topK: number) => {
+    setExternalQuery({ query, topK });
+  }, []);
+
+  const handleClearHistory = useCallback(() => {
+    setSearchHistory([]);
+    saveHistory([]);
+  }, []);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "upload", label: "Upload" },
@@ -84,11 +148,18 @@ export default function Home() {
       )}
 
       {activeTab === "search" && (
-        <div className="space-y-8">
+        <div className="space-y-4">
+          <IndexStatsCard />
           <SearchSection
             onSearchStart={handleSearchStart}
             onSearchComplete={handleSearchComplete}
             onSearchError={handleSearchError}
+            externalQuery={externalQuery}
+          />
+          <SearchHistory
+            history={searchHistory}
+            onRerun={handleRerun}
+            onClear={handleClearHistory}
           />
           <ResultsSection
             results={results}

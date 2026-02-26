@@ -7,6 +7,7 @@ import {
   JiraIssueType,
   JiraTicketSummary,
   SuggestedTestCase,
+  IndexStats,
 } from "../types";
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
@@ -178,6 +179,17 @@ export async function suggestTestCases(
 
   const data = await res.json();
   return data.suggestions;
+}
+
+export async function fetchIndexStats(): Promise<IndexStats> {
+  const res = await fetch("/api/stats");
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Failed to fetch index stats");
+  }
+
+  return res.json();
 }
 
 export async function checkHealth(): Promise<{
