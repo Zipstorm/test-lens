@@ -32,12 +32,30 @@ function getColor(index: number) {
   return HEAT_COLORS[index % HEAT_COLORS.length];
 }
 
+/**
+ * Prettify raw source strings like "xray:QA:QA-851" → { label: "QA-851", badge: "Xray" }
+ * Handles: "xray:PROJ:KEY", "jira:PROJ:KEY", "xray:PROJ", "jira:PROJ", filenames
+ */
+function formatSourceName(raw: string): { label: string; badge?: string } {
+  const parts = raw.split(":");
+  if (parts.length >= 2 && (parts[0] === "xray" || parts[0] === "jira")) {
+    const provider = parts[0] === "xray" ? "Xray" : "Jira";
+    // "xray:QA:QA-851" → ticket "QA-851", "xray:QA" → project "QA"
+    const label = parts.length >= 3 ? parts.slice(2).join(":") : parts[1];
+    return { label, badge: provider };
+  }
+  // File uploads — just the filename
+  return { label: raw };
+}
+
 function BreakdownChart({
   items,
   maxCount,
+  viewMode,
 }: {
   items: CoverageBreakdown[];
   maxCount: number;
+  viewMode: ViewMode;
 }) {
   if (items.length === 0) {
     return (
@@ -53,6 +71,8 @@ function BreakdownChart({
         const pct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
         const color = getColor(i);
 
+        const formatted = viewMode === "source" ? formatSourceName(item.name) : null;
+
         return (
           <div key={item.name} className="group">
             <div className="flex items-center gap-3">
@@ -61,7 +81,18 @@ function BreakdownChart({
                 className={`w-40 shrink-0 truncate text-right text-sm font-medium ${color.text}`}
                 title={item.name}
               >
-                {item.name}
+                {formatted ? (
+                  <span className="inline-flex items-center gap-1.5 justify-end">
+                    {formatted.badge && (
+                      <span className="rounded bg-slate-200 px-1 py-px text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                        {formatted.badge}
+                      </span>
+                    )}
+                    {formatted.label}
+                  </span>
+                ) : (
+                  item.name
+                )}
               </span>
 
               {/* Bar */}
@@ -306,7 +337,7 @@ export default function CoverageHeatmap() {
             </span>
           </div>
 
-          <BreakdownChart items={currentItems} maxCount={maxCount} />
+          <BreakdownChart items={currentItems} maxCount={maxCount} viewMode={viewMode} />
         </div>
       )}
     </div>
