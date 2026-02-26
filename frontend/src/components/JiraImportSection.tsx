@@ -302,18 +302,15 @@ export default function JiraImportSection({
               >
                 Project
               </label>
-              <select
-                id="jira-project"
+              <SearchableSelect
+                options={projects.map((p) => ({
+                  value: p.key,
+                  label: `${p.key} — ${p.name}`,
+                }))}
                 value={selectedProject}
-                onChange={(e) => handleProjectChange(e.target.value)}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-              >
-                {projects.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.key} — {p.name}
-                  </option>
-                ))}
-              </select>
+                onChange={handleProjectChange}
+                placeholder="Search projects..."
+              />
             </div>
             <div className="w-32">
               <label
