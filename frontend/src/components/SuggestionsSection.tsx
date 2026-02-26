@@ -103,9 +103,11 @@ export default function SuggestionsSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Missing Test Cases
-        </h3>
+        {status !== "idle" && (
+          <h3 className="text-sm font-semibold text-slate-700">
+            Missing Test Cases
+          </h3>
+        )}
         {status !== "loading" && (
           <button
             onClick={handleSuggest}
