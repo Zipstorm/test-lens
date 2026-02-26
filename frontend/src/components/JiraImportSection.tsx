@@ -10,6 +10,19 @@ import {
 } from "../lib/api";
 import type { JiraProject, JiraIssueType, JiraTicketSummary } from "../types";
 
+/**
+ * Prettify raw source strings: "xray:QA:QA-806" → "Xray · QA-806"
+ */
+function formatSource(raw: string): string {
+  const parts = raw.split(":");
+  if (parts.length >= 2 && (parts[0] === "xray" || parts[0] === "jira")) {
+    const provider = parts[0] === "xray" ? "Xray" : "Jira";
+    const label = parts.length >= 3 ? parts.slice(2).join(":") : parts[1];
+    return `${provider} · ${label}`;
+  }
+  return raw;
+}
+
 /* ── Searchable select dropdown ─────────────────────────────────── */
 interface SearchableSelectOption {
   value: string;
@@ -494,7 +507,7 @@ export default function JiraImportSection({
               <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
                 {count} test cases imported
               </p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400">{source}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{formatSource(source)}</p>
             </div>
           </div>
           <button
