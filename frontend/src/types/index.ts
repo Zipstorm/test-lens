@@ -3,6 +3,11 @@ export interface SearchResult {
   relevance: "high" | "medium" | "low";
   riskScore: number;
   reason: string;
+  issueKey?: string;
+  testType?: string;
+  folder?: string;
+  steps?: string;
+  preconditions?: string;
 }
 
 export interface UploadResponse {

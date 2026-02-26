@@ -8,6 +8,11 @@ export interface ExplainResult {
   testCase: string;
   module?: string;
   source?: string;
+  issueKey?: string;
+  testType?: string;
+  folder?: string;
+  steps?: string;
+  preconditions?: string;
   relevance: "high" | "medium" | "low";
   riskScore: number;
   reason: string;
@@ -23,7 +28,39 @@ function getClient(): Anthropic {
 }
 
 /**
+ * Format steps JSON string into readable text for the prompt.
+ */
+function formatSteps(stepsJson: string): string {
+  try {
+    const steps = JSON.parse(stepsJson) as { action: string; data: string; result: string }[];
+    return steps
+      .map((s, i) => {
+        const parts = [`Step ${i + 1}: ${s.action}`];
+        if (s.data) parts.push(`Data: ${s.data}`);
+        if (s.result) parts.push(`Expected: ${s.result}`);
+        return parts.join(" | ");
+      })
+      .join("\n   ");
+  } catch {
+    return stepsJson;
+  }
+}
+
+/**
+ * Format preconditions JSON string into readable text for the prompt.
+ */
+function formatPreconditions(preJson: string): string {
+  try {
+    const pcs = JSON.parse(preJson) as { key: string; definition: string }[];
+    return pcs.map((p) => `${p.key ? `[${p.key}] ` : ""}${p.definition}`).join("; ");
+  } catch {
+    return preJson;
+  }
+}
+
+/**
  * Build the prompt that asks Claude to analyze test case relevance.
+ * Uses structured metadata when available for richer context.
  */
 function buildPrompt(
   userStory: string,
@@ -31,17 +68,34 @@ function buildPrompt(
 ): string {
   const testCaseList = matches
     .map((m, i) => {
-      const moduleTag = m.module ? ` [module: ${m.module}]` : "";
-      return `${i + 1}. [score: ${m.score.toFixed(3)}]${moduleTag} ${m.text}`;
+      const tags: string[] = [`score: ${m.score.toFixed(3)}`];
+      if (m.module) tags.push(`module: ${m.module}`);
+      if (m.testType) tags.push(`type: ${m.testType}`);
+      if (m.issueKey) tags.push(`key: ${m.issueKey}`);
+
+      const lines: string[] = [`${i + 1}. [${tags.join(", ")}]`];
+      lines.push(`   Summary: ${m.text.split(". ")[0]}`);
+
+      if (m.steps) {
+        lines.push(`   Steps:\n   ${formatSteps(m.steps)}`);
+      }
+      if (m.preconditions) {
+        lines.push(`   Preconditions: ${formatPreconditions(m.preconditions)}`);
+      }
+      if (m.gherkin) {
+        lines.push(`   Gherkin: ${m.gherkin.slice(0, 300)}`);
+      }
+
+      return lines.join("\n");
     })
-    .join("\n");
+    .join("\n\n");
 
   return `You are a QA engineer analyzing which regression test cases are relevant to a user story.
 
 User Story:
 "${userStory}"
 
-Matched Test Cases (with similarity scores):
+Matched Test Cases (with similarity scores and structured details):
 ${testCaseList}
 
 For each test case, determine:
@@ -96,12 +150,20 @@ export async function explainMatches(
     ) {
       throw new Error("Invalid response structure from Claude");
     }
-    // Attach source and module from the original Pinecone match
+    // Attach metadata from the original Pinecone match
     if (i < matches.length) {
-      item.source = matches[i].source;
-      if (!item.module && matches[i].module) {
-        item.module = matches[i].module;
+      const match = matches[i];
+      // Always use the original summary as testCase (Claude may return the key instead)
+      item.testCase = match.text.split(". ")[0];
+      item.source = match.source;
+      if (!item.module && match.module) {
+        item.module = match.module;
       }
+      item.issueKey = match.issueKey;
+      item.testType = match.testType;
+      item.folder = match.folder;
+      item.steps = match.steps;
+      item.preconditions = match.preconditions;
     }
   }
 

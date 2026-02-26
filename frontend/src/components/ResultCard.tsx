@@ -17,12 +17,88 @@ interface ResultCardProps {
   defaultExpanded?: boolean;
 }
 
+function MetadataPill({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+      <span className="text-slate-400">{label}:</span> {value}
+    </span>
+  );
+}
+
+function StepsList({ stepsJson }: { stepsJson: string }) {
+  try {
+    const steps = JSON.parse(stepsJson) as {
+      action: string;
+      data: string;
+      result: string;
+    }[];
+    if (steps.length === 0) return null;
+    return (
+      <div className="mt-2">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Steps
+        </p>
+        <ol className="list-decimal list-inside space-y-1">
+          {steps.map((s, i) => (
+            <li key={i} className="text-xs text-slate-600">
+              <span className="font-medium">{s.action}</span>
+              {s.data && (
+                <span className="text-slate-400"> | Data: {s.data}</span>
+              )}
+              {s.result && (
+                <span className="text-slate-400">
+                  {" "}
+                  | Expected: {s.result}
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  } catch {
+    return null;
+  }
+}
+
+function PreconditionsList({ preJson }: { preJson: string }) {
+  try {
+    const pcs = JSON.parse(preJson) as {
+      key: string;
+      definition: string;
+    }[];
+    if (pcs.length === 0) return null;
+    return (
+      <div className="mt-2">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          Preconditions
+        </p>
+        <ul className="list-disc list-inside space-y-0.5">
+          {pcs.map((p, i) => (
+            <li key={i} className="text-xs text-slate-600">
+              {p.key && (
+                <span className="font-medium text-blue-600">{p.key}: </span>
+              )}
+              {p.definition}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default function ResultCard({
   result,
   index,
   defaultExpanded = false,
 }: ResultCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  const hasMetadata =
+    result.issueKey || result.testType || result.folder || result.steps || result.preconditions;
 
   return (
     <div
@@ -34,9 +110,27 @@ export default function ResultCard({
             <span className="mt-0.5 flex-shrink-0 text-xs font-medium text-slate-400">
               #{index + 1}
             </span>
-            <p className="text-sm font-medium text-slate-800">
-              {result.testCase}
-            </p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-800">
+                {result.testCase}
+              </p>
+              {hasMetadata && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {result.issueKey && (
+                    <MetadataPill label="Key" value={result.issueKey} />
+                  )}
+                  {result.testType && (
+                    <MetadataPill label="Type" value={result.testType} />
+                  )}
+                  {result.folder && (
+                    <MetadataPill
+                      label="Folder"
+                      value={result.folder.replace(/^\/+/, "").replace(/\//g, " > ")}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex flex-shrink-0 items-center gap-3">
             <RelevanceBadge relevance={result.relevance} />
@@ -61,13 +155,20 @@ export default function ResultCard({
               d="M9 5l7 7-7 7"
             />
           </svg>
-          {expanded ? "Hide reason" : "Show reason"}
+          {expanded ? "Hide details" : "Show details"}
         </button>
 
         {expanded && (
-          <p className="mt-2 rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-            {result.reason}
-          </p>
+          <div className="mt-2 rounded bg-slate-50 p-3 space-y-2">
+            <p className="text-xs leading-relaxed text-slate-600">
+              {result.reason}
+            </p>
+
+            {result.steps && <StepsList stepsJson={result.steps} />}
+            {result.preconditions && (
+              <PreconditionsList preJson={result.preconditions} />
+            )}
+          </div>
         )}
       </div>
     </div>

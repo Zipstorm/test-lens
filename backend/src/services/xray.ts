@@ -373,11 +373,40 @@ export function xrayTestToRichText(test: XrayTest): string {
 }
 
 /**
+ * Extract structured metadata from an Xray test for Pinecone storage.
+ * Complex values (steps, preconditions) are JSON-stringified.
+ */
+function xrayTestToMetadata(test: XrayTest): Record<string, string> {
+  const meta: Record<string, string> = {};
+
+  if (test.issueKey) meta.issueKey = test.issueKey;
+  if (test.testType) meta.testType = test.testType;
+  if (test.folder) meta.folder = test.folder;
+  if (test.description) meta.description = test.description;
+  if (test.labels.length > 0) meta.labels = test.labels.join(", ");
+
+  if (test.steps.length > 0) {
+    meta.steps = JSON.stringify(test.steps);
+  }
+  if (test.preconditions.length > 0) {
+    meta.preconditions = JSON.stringify(test.preconditions);
+  }
+  if (test.gherkin) meta.gherkin = test.gherkin;
+  if (test.unstructured) meta.unstructured = test.unstructured;
+
+  return meta;
+}
+
+/**
  * Convert an Xray test to a TestCase for the embedding pipeline.
  * Uses folder path as module if available, otherwise first meaningful label.
+ * Populates structured metadata for Pinecone storage.
  */
 export function xrayTestToTestCase(test: XrayTest): TestCase {
-  const tc: TestCase = { text: xrayTestToRichText(test) };
+  const tc: TestCase = {
+    text: xrayTestToRichText(test),
+    metadata: xrayTestToMetadata(test),
+  };
 
   // Module: prefer folder path, then labels
   if (test.folder) {

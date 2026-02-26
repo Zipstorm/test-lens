@@ -6,6 +6,7 @@ const MODULE_HEADERS = ["module", "component", "area", "category", "feature"];
 export interface TestCase {
   text: string;
   module?: string;
+  metadata?: Record<string, string>;
 }
 
 /**

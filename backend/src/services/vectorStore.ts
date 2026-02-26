@@ -11,6 +11,15 @@ export interface MatchResult {
   module?: string;
   source?: string;
   score: number;
+  issueKey?: string;
+  testType?: string;
+  folder?: string;
+  labels?: string;
+  description?: string;
+  steps?: string;
+  preconditions?: string;
+  gherkin?: string;
+  unstructured?: string;
 }
 
 /**
@@ -66,6 +75,12 @@ export async function buildIndex(
       if (source) {
         metadata.source = source;
       }
+      // Spread extra metadata fields (from Xray imports, etc.)
+      if (tc.metadata) {
+        for (const [k, v] of Object.entries(tc.metadata)) {
+          if (v) metadata[k] = v;
+        }
+      }
       return {
         id: hashId(tc.text),
         values,
@@ -96,12 +111,21 @@ export async function queryIndex(
   });
 
   return (result.matches || []).map((match) => {
-    const meta = match.metadata as { text: string; module?: string; source?: string } | undefined;
+    const meta = match.metadata as Record<string, string> | undefined;
     return {
       text: meta?.text ?? "",
       module: meta?.module,
       source: meta?.source,
       score: match.score ?? 0,
+      issueKey: meta?.issueKey,
+      testType: meta?.testType,
+      folder: meta?.folder,
+      labels: meta?.labels,
+      description: meta?.description,
+      steps: meta?.steps,
+      preconditions: meta?.preconditions,
+      gherkin: meta?.gherkin,
+      unstructured: meta?.unstructured,
     };
   });
 }
