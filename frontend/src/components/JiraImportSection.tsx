@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   fetchJiraProjects,
   fetchIssueTypes,
@@ -10,6 +10,108 @@ import {
 } from "../lib/api";
 import type { JiraProject, JiraIssueType, JiraTicketSummary } from "../types";
 
+/* ── Searchable select dropdown ─────────────────────────────────── */
+interface SearchableSelectOption {
+  value: string;
+  label: string;
+}
+
+function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Search...",
+}: {
+  options: SearchableSelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? "";
+
+  const filtered = options.filter((o) =>
+    o.label.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      setOpen(false);
+      setQuery("");
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [handleClickOutside]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
+      <input
+        ref={inputRef}
+        type="text"
+        className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        placeholder={placeholder}
+        value={open ? query : selectedLabel}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+      />
+      {/* dropdown chevron */}
+      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-slate-400">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </span>
+
+      {open && (
+        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border border-slate-300 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No matches</li>
+          ) : (
+            filtered.map((o) => (
+              <li
+                key={o.value}
+                className={`cursor-pointer px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 ${
+                  o.value === value
+                    ? "bg-blue-50 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                    : "text-slate-700 dark:text-slate-200"
+                }`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // keep focus on input
+                  onChange(o.value);
+                  setOpen(false);
+                  setQuery("");
+                }}
+              >
+                {o.label}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ── Main component ────────────────────────────────────────────── */
 interface JiraImportSectionProps {
   onImportComplete: (count: number) => void;
 }
@@ -37,34 +139,48 @@ export default function JiraImportSection({
   const [loadingIssueTypes, setLoadingIssueTypes] = useState(false);
   const [loadingTickets, setLoadingTickets] = useState(false);
 
-  // Load issue types when project changes
-  useEffect(() => {
-    if (!selectedProject || status !== "ready") return;
+  const ALLOWED_TYPES = ["Epic", "Test Plan", "Test Set"];
+
+  const loadIssueTypesFor = async (projectKey: string) => {
+    setLoadingIssueTypes(true);
+    try {
+      const types = await fetchIssueTypes(projectKey);
+      setIssueTypes(types.filter((t) => ALLOWED_TYPES.includes(t.name)));
+    } catch (err) {
+      console.error("Failed to load issue types:", err);
+    } finally {
+      setLoadingIssueTypes(false);
+    }
+  };
+
+  const loadTicketsFor = async (projectKey: string, issueType: string) => {
+    setLoadingTickets(true);
+    try {
+      const t = await fetchTicketsByType(projectKey, issueType);
+      setTickets(t);
+    } catch (err) {
+      console.error("Failed to load tickets:", err);
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  const handleProjectChange = (key: string) => {
+    setSelectedProject(key);
     setSelectedIssueType("");
     setTickets([]);
     setSelectedTicket("");
-    setLoadingIssueTypes(true);
-    const ALLOWED_TYPES = ["Epic", "Test Plan", "Test Set"];
-    fetchIssueTypes(selectedProject)
-      .then((types) => setIssueTypes(types.filter((t) => ALLOWED_TYPES.includes(t.name))))
-      .catch((err) => console.error("Failed to load issue types:", err))
-      .finally(() => setLoadingIssueTypes(false));
-  }, [selectedProject, status]);
+    loadIssueTypesFor(key);
+  };
 
-  // Load tickets when issue type changes
-  useEffect(() => {
-    if (!selectedIssueType || !selectedProject) {
-      setTickets([]);
-      setSelectedTicket("");
-      return;
-    }
-    setLoadingTickets(true);
+  const handleIssueTypeChange = (name: string) => {
+    setSelectedIssueType(name);
+    setTickets([]);
     setSelectedTicket("");
-    fetchTicketsByType(selectedProject, selectedIssueType)
-      .then((t) => setTickets(t))
-      .catch((err) => console.error("Failed to load tickets:", err))
-      .finally(() => setLoadingTickets(false));
-  }, [selectedIssueType, selectedProject]);
+    if (name && selectedProject) {
+      loadTicketsFor(selectedProject, name);
+    }
+  };
 
   const loadProjects = async () => {
     setStatus("loading-projects");
@@ -73,8 +189,10 @@ export default function JiraImportSection({
       const data = await fetchJiraProjects();
       setProjects(data);
       const qa = data.find((p) => p.key === "QA");
-      setSelectedProject(qa ? qa.key : data[0]?.key ?? "");
+      const projectKey = qa ? qa.key : data[0]?.key ?? "";
+      setSelectedProject(projectKey);
       setStatus("ready");
+      if (projectKey) loadIssueTypesFor(projectKey);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load projects");
       setStatus("error");
@@ -187,7 +305,7 @@ export default function JiraImportSection({
               <select
                 id="jira-project"
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
+                onChange={(e) => handleProjectChange(e.target.value)}
                 className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 {projects.map((p) => (
@@ -233,7 +351,7 @@ export default function JiraImportSection({
               <select
                 id="issue-type"
                 value={selectedIssueType}
-                onChange={(e) => setSelectedIssueType(e.target.value)}
+                onChange={(e) => handleIssueTypeChange(e.target.value)}
                 className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 <option value="">Entire project (no filter)</option>
@@ -264,19 +382,15 @@ export default function JiraImportSection({
                   No {selectedIssueType} tickets found in this project.
                 </p>
               ) : (
-                <select
-                  id="parent-ticket"
+                <SearchableSelect
+                  options={tickets.map((t) => ({
+                    value: t.key,
+                    label: `${t.key} — ${t.summary}`,
+                  }))}
                   value={selectedTicket}
-                  onChange={(e) => setSelectedTicket(e.target.value)}
-                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value="">-- Select a ticket --</option>
-                  {tickets.map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.key} — {t.summary}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedTicket}
+                  placeholder={`Search ${selectedIssueType} tickets...`}
+                />
               )}
             </div>
           )}
