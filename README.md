@@ -4,7 +4,7 @@ AI-powered regression test selector. Upload your test cases, describe a user sto
 
 ## How It Works
 
-Upload a spreadsheet of test cases. Type a user story. Get back the tests that matter most — ranked by relevance with AI-generated explanations.
+Upload a spreadsheet of test cases (or import from Jira/Xray). Type a user story. Get back the tests that matter most — ranked by relevance with AI-generated explanations.
 
 ```mermaid
 flowchart LR
@@ -16,156 +16,6 @@ flowchart LR
     D --> G
     G --> H[Claude Analyzes Matches]
     H --> I[Ranked Results + Explanations]
-```
-
-## Architecture
-
-```
-test-lens/
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx        # Root layout with Geist fonts
-│   │   │   ├── page.tsx          # Main page with tab navigation
-│   │   │   └── globals.css       # Tailwind + theme variables
-│   │   ├── components/
-│   │   │   ├── Header.tsx        # App title and description
-│   │   │   ├── UploadSection.tsx  # File upload with status handling
-│   │   │   ├── FileDropZone.tsx   # Drag-and-drop file input
-│   │   │   ├── SearchSection.tsx  # User story input + search controls
-│   │   │   ├── ResultsSection.tsx # Search results container
-│   │   │   ├── ResultCard.tsx     # Individual result with expandable reason
-│   │   │   ├── RelevanceBadge.tsx # Color-coded relevance pill
-│   │   │   └── RiskScore.tsx      # 5-dot risk indicator
-│   │   ├── lib/
-│   │   │   └── api.ts            # API client (upload, search, health)
-│   │   └── types/
-│   │       └── index.ts          # TypeScript interfaces
-│   ├── next.config.ts            # API proxy to backend
-│   ├── package.json
-│   └── tsconfig.json
-├── backend/
-│   ├── src/
-│   │   ├── server.ts             # Express app entry point
-│   │   ├── cli.ts                # Interactive CLI for testing
-│   │   ├── routes/
-│   │   │   ├── upload.ts         # POST /api/upload
-│   │   │   └── search.ts        # POST /api/search
-│   │   └── services/
-│   │       ├── parser.ts         # CSV/XLSX file parsing
-│   │       ├── embedder.ts       # OpenAI embeddings
-│   │       ├── vectorStore.ts    # Pinecone vector DB
-│   │       └── llm.ts           # Claude analysis
-│   ├── test-data/                # Sample test fixtures
-│   └── uploads/                  # Temp file storage
-└── README.md
-```
-
-## Frontend
-
-The frontend is a Next.js app with two tabs:
-
-- **Upload** — Drag-and-drop CSV/XLSX files. Shows parsing and indexing progress, success count, or error messages.
-- **Search** — Enter a user story, pick how many results (5–20), and hit search. Results appear below with relevance badges, risk scores, and expandable AI explanations.
-
-Search works independently — if test cases are already indexed in Pinecone, you can search without uploading first.
-
-```mermaid
-flowchart TB
-    subgraph Frontend["Frontend (Next.js)"]
-        Page["page.tsx<br>Tab Navigation"]
-        Page --> UploadTab["Upload Tab"]
-        Page --> SearchTab["Search Tab"]
-        UploadTab --> USection["UploadSection"]
-        USection --> FDZ["FileDropZone"]
-        SearchTab --> SSection["SearchSection"]
-        SearchTab --> RSection["ResultsSection"]
-        RSection --> RC["ResultCard"]
-        RC --> RB["RelevanceBadge"]
-        RC --> RS["RiskScore"]
-    end
-
-    subgraph Backend["Backend (Express)"]
-        Upload["POST /api/upload"]
-        Search["POST /api/search"]
-    end
-
-    USection -->|"fetch /api/upload"| Upload
-    SSection -->|"fetch /api/search"| Search
-```
-
-## Upload Flow
-
-User uploads a CSV/XLSX file. The backend parses it, generates embeddings, and stores them in Pinecone.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant API as Express API
-    participant Parser
-    participant OpenAI
-    participant Pinecone
-
-    User->>Frontend: Drop file in Upload tab
-    Frontend->>API: POST /api/upload (file)
-    API->>Parser: parseFile(filePath)
-    Parser-->>API: string[] (test cases)
-    API->>OpenAI: embedBatch(testCases)
-    OpenAI-->>API: number[][] (vectors)
-    API->>Pinecone: buildIndex(vectors, texts)
-    Pinecone-->>API: success
-    API-->>Frontend: { success: true, count: 30 }
-    Frontend-->>User: "30 test cases indexed"
-```
-
-## Search Flow
-
-User types a user story. The backend embeds it, finds similar test cases, and asks Claude to explain the relevance.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant API as Express API
-    participant OpenAI
-    participant Pinecone
-    participant Claude
-
-    User->>Frontend: Enter story in Search tab
-    Frontend->>API: POST /api/search { userStory, topK }
-    API->>OpenAI: embed(userStory)
-    OpenAI-->>API: number[] (query vector)
-    API->>Pinecone: queryIndex(vector, topK)
-    Pinecone-->>API: matched test cases + scores
-    API->>Claude: explainMatches(story, matches)
-    Claude-->>API: relevance + risk + reasons
-    API-->>Frontend: { results: ExplainResult[] }
-    Frontend-->>User: Ranked result cards
-```
-
-## Service Layer
-
-```mermaid
-flowchart TB
-    subgraph Services
-        P[parser.ts<br>File Parsing]
-        E[embedder.ts<br>OpenAI Embeddings]
-        V[vectorStore.ts<br>Pinecone DB]
-        L[llm.ts<br>Claude Analysis]
-    end
-
-    subgraph Routes
-        U[upload.ts<br>POST /api/upload]
-        S[search.ts<br>POST /api/search]
-    end
-
-    U --> P
-    U --> E
-    U --> V
-    S --> E
-    S --> V
-    S --> L
 ```
 
 ## Quick Start
@@ -207,48 +57,7 @@ npm run dev
 
 App starts at `http://localhost:3001`. API requests are proxied to the backend on port 3000.
 
-## API Reference
-
-### `POST /api/upload`
-
-Upload a CSV or XLSX file containing test cases.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| file  | File | CSV or XLSX with a "Description" column |
-
-**Response:**
-```json
-{ "success": true, "count": 30 }
-```
-
-### `POST /api/search`
-
-Find relevant test cases for a user story.
-
-| Field     | Type   | Required | Description |
-|-----------|--------|----------|-------------|
-| userStory | string | yes      | The user story to match against |
-| topK      | number | no       | Number of results (default: 5, max: 20) |
-
-**Response:**
-```json
-{
-  "userStory": "As a user, I want to reset my password",
-  "results": [
-    {
-      "testCase": "Verify password reset email is sent",
-      "relevance": "high",
-      "riskScore": 5,
-      "reason": "Directly tests the core password reset functionality"
-    }
-  ]
-}
-```
-
-### `GET /api/health`
-
-Health check endpoint.
+> **Full setup guide** (Jira, Xray, Docker, all env vars): [docs/setup/environment-setup.md](docs/setup/environment-setup.md)
 
 ## Tech Stack
 
@@ -262,8 +71,158 @@ Health check endpoint.
 | LLM         | Anthropic Claude (claude-haiku-4-5) |
 | File Parse  | xlsx library |
 
+## Architecture
+
+> **Deep dive:** [docs/system-design.md](docs/system-design.md)
+
+```mermaid
+flowchart TB
+    subgraph Frontend["Frontend (Next.js :3001)"]
+        Page["page.tsx — Tab Navigation"]
+        Page --> UploadTab["Upload Tab"]
+        Page --> JiraTab["Jira Import Tab"]
+        Page --> SearchTab["Search Tab"]
+        UploadTab --> USection["UploadSection"]
+        USection --> FDZ["FileDropZone"]
+        JiraTab --> JSection["JiraImportSection"]
+        SearchTab --> SSection["SearchSection"]
+        SearchTab --> RSection["ResultsSection"]
+        SearchTab --> SGSection["SuggestionsSection"]
+        RSection --> RC["ResultCard"]
+    end
+
+    subgraph Backend["Backend (Express :3000)"]
+        Upload["POST /api/upload"]
+        Search["POST /api/search"]
+        Suggest["POST /api/search/suggest"]
+        JiraRoutes["GET/POST /api/jira/*"]
+    end
+
+    USection -->|"fetch"| Upload
+    SSection -->|"fetch"| Search
+    SGSection -->|"fetch"| Suggest
+    JSection -->|"fetch"| JiraRoutes
+```
+
+```
+test-lens/
+├── frontend/
+│   └── src/
+│       ├── app/            # Next.js pages and layout
+│       ├── components/     # React UI components
+│       ├── lib/api.ts      # API client
+│       └── types/          # TypeScript interfaces
+├── backend/
+│   └── src/
+│       ├── server.ts       # Express entry point
+│       ├── routes/         # upload, search, jira route handlers
+│       └── services/       # parser, embedder, vectorStore, llm, jira, xray
+├── docs/                   # Documentation (see below)
+└── README.md
+```
+
+## Data Pipelines
+
+> **Deep dive:** [docs/system-design.md — §4–5](docs/system-design.md)
+
+### Upload / Import
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Express API
+    participant Parser
+    participant OpenAI
+    participant Pinecone
+
+    User->>API: POST /api/upload (CSV/XLSX)
+    API->>Parser: parseFile(filePath)
+    Parser-->>API: TestCase[]
+    API->>OpenAI: embedBatch(testCases)
+    OpenAI-->>API: number[][] (vectors)
+    API->>Pinecone: buildIndex(vectors, metadata)
+    Pinecone-->>API: success
+    API-->>User: { count: 30 }
+```
+
+Three import sources converge on the same embed → index pipeline:
+- **CSV/XLSX** — parsed by `parser.ts`
+- **Jira** — summaries + labels via REST API (`jira.ts`)
+- **Xray** — test steps + preconditions via GraphQL (`xray.ts`)
+
+### Search & Analysis
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as Express API
+    participant OpenAI
+    participant Pinecone
+    participant Claude
+
+    User->>API: POST /api/search { userStory, topK }
+    API->>OpenAI: embed(userStory)
+    OpenAI-->>API: query vector
+    API->>Pinecone: queryIndex(vector, topK)
+    Pinecone-->>API: matched tests + scores
+    API->>Claude: explainMatches(story, matches)
+    Claude-->>API: relevance + risk + reasons
+    API-->>User: ExplainResult[]
+```
+
+## API Reference
+
+> **Full reference (all 11 endpoints):** [docs/api-reference.md](docs/api-reference.md)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/upload` | Upload CSV/XLSX test cases |
+| `POST` | `/api/search` | Search for relevant tests by user story |
+| `POST` | `/api/search/suggest` | Generate missing test case suggestions |
+| `GET` | `/api/jira/projects` | List Jira projects |
+| `GET` | `/api/jira/issue-types/:projectKey` | List issue types for a project |
+| `GET` | `/api/jira/tickets/:projectKey/:issueType` | List tickets by type |
+| `GET` | `/api/jira/issues/:projectKey` | List project issues |
+| `GET` | `/api/jira/issue/:issueKey` | Get single issue details |
+| `POST` | `/api/jira/import` | Import from Jira |
+| `POST` | `/api/jira/xray-import` | Import from Xray |
+| `GET` | `/api/health` | Health check |
+
+## Data Model
+
+> **Full reference:** [docs/data-model.md](docs/data-model.md)
+
+Key types flowing through the system:
+
+```
+CSV/Jira/Xray → TestCase → embedBatch() → Pinecone vectors (with metadata)
+                                              ↓
+User Story → embed() → queryIndex() → MatchResult[] → explainMatches() → ExplainResult[]
+                                                                            ↓
+                                                     suggestTestCases() → SuggestedTestCase[]
+```
+
+## Architecture Decisions
+
+| ADR | Decision |
+|-----|----------|
+| [ADR-001](docs/adr/001-embedding-model-choice.md) | `text-embedding-3-small` at 1536 dimensions — fast, cheap, upgradeable |
+| [ADR-002](docs/adr/002-dedup-via-sha256-hash.md) | SHA-256 content hash as vector IDs — safe upsert deduplication |
+| [ADR-003](docs/adr/003-xray-vs-jira-import.md) | Support both Xray (rich) and Jira (simple) import modes |
+
+## Diagrams
+
+Editable diagrams in [Excalidraw](https://excalidraw.com) format — open at [excalidraw.com](https://excalidraw.com) or with the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor).
+
+| Diagram | What it shows |
+|---------|---------------|
+| [System Architecture](docs/diagrams/system-architecture.excalidraw) | High-level boxes & arrows — Frontend, Backend, external services, Docker Compose |
+| [Data Pipeline](docs/diagrams/data-pipeline.excalidraw) | Import pipeline (3 sources → embed → index) and Search pipeline (query → analyze) |
+| [Component Tree](docs/diagrams/frontend-component-tree.excalidraw) | React component hierarchy with state, props, and API annotations |
+| [Knowledge Graph](docs/diagrams/knowledge-graph.excalidraw) | Mindmap — Data Sources, AI/ML, Storage, Frontend, Infrastructure branches |
+
 ## Test Data
 
-Sample files are in `backend/test-data/`:
+Sample files in `backend/test-data/`:
 - `sample-tests.csv` — 30 e-commerce regression test cases
 - `sample-user-stories.json` — 5 sample user stories for testing search
