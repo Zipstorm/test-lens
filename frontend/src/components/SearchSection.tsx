@@ -58,7 +58,7 @@ export default function SearchSection({
           onKeyDown={handleKeyDown}
           placeholder="Describe your user story... e.g., As a user, I want to reset my password so I can regain access to my account"
           rows={3}
-          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
         />
 
         <div className="mt-3 flex items-center gap-3">
@@ -67,7 +67,7 @@ export default function SearchSection({
             disabled={isDisabled}
             className={`
               inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors
-              ${isDisabled ? "cursor-not-allowed bg-slate-300" : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"}
+              ${isDisabled ? "cursor-not-allowed bg-slate-300 dark:bg-slate-700" : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"}
             `}
           >
             {isSearching && (
@@ -94,13 +94,13 @@ export default function SearchSection({
             {isSearching ? "Searching..." : "Find Relevant Tests"}
           </button>
 
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
             <label htmlFor="topK">Results:</label>
             <select
               id="topK"
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -109,7 +109,7 @@ export default function SearchSection({
             </select>
           </div>
 
-          <span className="ml-auto text-xs text-slate-400">
+          <span className="ml-auto text-xs text-slate-400 dark:text-slate-500">
             {"\u2318"}+Enter to search
           </span>
         </div>

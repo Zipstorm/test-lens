@@ -44,8 +44,9 @@ export default function JiraImportSection({
     setTickets([]);
     setSelectedTicket("");
     setLoadingIssueTypes(true);
+    const ALLOWED_TYPES = ["Epic", "Test Plan", "Test Set"];
     fetchIssueTypes(selectedProject)
-      .then((types) => setIssueTypes(types))
+      .then((types) => setIssueTypes(types.filter((t) => ALLOWED_TYPES.includes(t.name))))
       .catch((err) => console.error("Failed to load issue types:", err))
       .finally(() => setLoadingIssueTypes(false));
   }, [selectedProject, status]);
@@ -119,7 +120,7 @@ export default function JiraImportSection({
       </h2>
 
       {status === "idle" && (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+        <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-6 text-center">
           <svg
             className="mx-auto mb-3 h-10 w-10 text-blue-500"
             fill="none"
@@ -133,10 +134,10 @@ export default function JiraImportSection({
               d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
             />
           </svg>
-          <p className="mb-1 text-sm font-medium text-slate-700">
+          <p className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             Connect to Jira
           </p>
-          <p className="mb-4 text-xs text-slate-400">
+          <p className="mb-4 text-xs text-slate-400 dark:text-slate-500 dark:text-slate-500">
             Import test cases from a Jira project into the vector store
           </p>
           <button
@@ -149,7 +150,7 @@ export default function JiraImportSection({
       )}
 
       {status === "loading-projects" && (
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-6">
           <svg
             className="h-5 w-5 animate-spin text-blue-600"
             fill="none"
@@ -169,17 +170,17 @@ export default function JiraImportSection({
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
             />
           </svg>
-          <p className="text-sm text-slate-600">Loading Jira projects...</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Loading Jira projects...</p>
         </div>
       )}
 
       {status === "ready" && (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+        <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-6 space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <label
                 htmlFor="jira-project"
-                className="mb-1 block text-sm font-medium text-slate-700"
+                className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
               >
                 Project
               </label>
@@ -187,7 +188,7 @@ export default function JiraImportSection({
                 id="jira-project"
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 {projects.map((p) => (
                   <option key={p.key} value={p.key}>
@@ -199,7 +200,7 @@ export default function JiraImportSection({
             <div className="w-32">
               <label
                 htmlFor="max-results"
-                className="mb-1 block text-sm font-medium text-slate-700"
+                className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
               >
                 Max issues
               </label>
@@ -207,7 +208,7 @@ export default function JiraImportSection({
                 id="max-results"
                 value={maxResults}
                 onChange={(e) => setMaxResults(Number(e.target.value))}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 <option value={50}>50</option>
                 <option value={100}>100</option>
@@ -221,19 +222,19 @@ export default function JiraImportSection({
           <div>
             <label
               htmlFor="issue-type"
-              className="mb-1 block text-sm font-medium text-slate-700"
+              className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
             >
               Filter by parent ticket{" "}
-              <span className="text-xs text-slate-400">(optional)</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">(optional)</span>
             </label>
             {loadingIssueTypes ? (
-              <p className="text-xs text-slate-400">Loading issue types...</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Loading issue types...</p>
             ) : (
               <select
                 id="issue-type"
                 value={selectedIssueType}
                 onChange={(e) => setSelectedIssueType(e.target.value)}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 <option value="">Entire project (no filter)</option>
                 {issueTypes.map((t) => (
@@ -250,16 +251,16 @@ export default function JiraImportSection({
             <div>
               <label
                 htmlFor="parent-ticket"
-                className="mb-1 block text-sm font-medium text-slate-700"
+                className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
               >
                 Select {selectedIssueType}
               </label>
               {loadingTickets ? (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   Loading {selectedIssueType} tickets...
                 </p>
               ) : tickets.length === 0 ? (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   No {selectedIssueType} tickets found in this project.
                 </p>
               ) : (
@@ -267,7 +268,7 @@ export default function JiraImportSection({
                   id="parent-ticket"
                   value={selectedTicket}
                   onChange={(e) => setSelectedTicket(e.target.value)}
-                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none"
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="">-- Select a ticket --</option>
                   {tickets.map((t) => (
@@ -282,7 +283,7 @@ export default function JiraImportSection({
 
           {/* Import mode toggle */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Import source
             </label>
             <div className="flex gap-2">
@@ -290,8 +291,8 @@ export default function JiraImportSection({
                 onClick={() => setImportMode("xray")}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   importMode === "xray"
-                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:ring-blue-700"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                 }`}
               >
                 Xray (with steps)
@@ -300,14 +301,14 @@ export default function JiraImportSection({
                 onClick={() => setImportMode("jira")}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   importMode === "jira"
-                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:ring-blue-700"
+                    : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                 }`}
               >
                 Jira (summary only)
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
               {importMode === "xray"
                 ? "Imports test steps, preconditions, and folder structure for richer embeddings"
                 : "Imports issue summaries and labels from Jira directly"}
@@ -327,7 +328,7 @@ export default function JiraImportSection({
       )}
 
       {status === "importing" && (
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-6">
           <svg
             className="h-5 w-5 animate-spin text-blue-600"
             fill="none"
@@ -348,11 +349,11 @@ export default function JiraImportSection({
             />
           </svg>
           <div>
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Importing from {selectedTicket || selectedProject} via{" "}
               {importMode === "xray" ? "Xray" : "Jira"}...
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               {importMode === "xray"
                 ? "Fetching tests with steps & preconditions, embedding, and indexing."
                 : "Fetching issues, embedding, and indexing."}{" "}
@@ -363,7 +364,7 @@ export default function JiraImportSection({
       )}
 
       {status === "success" && (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-6">
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950 p-6">
           <div className="flex items-center gap-3">
             <svg
               className="h-6 w-6 text-emerald-600"
@@ -379,15 +380,15 @@ export default function JiraImportSection({
               />
             </svg>
             <div>
-              <p className="text-sm font-medium text-emerald-800">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
                 {count} test cases imported
               </p>
-              <p className="text-xs text-emerald-600">{source}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">{source}</p>
             </div>
           </div>
           <button
             onClick={handleReset}
-            className="text-sm text-emerald-700 underline hover:text-emerald-900"
+            className="text-sm text-emerald-700 underline hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100"
           >
             Import Again
           </button>
@@ -395,7 +396,7 @@ export default function JiraImportSection({
       )}
 
       {status === "error" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+        <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-6">
           <div className="flex items-center gap-3">
             <svg
               className="h-6 w-6 text-red-600"
@@ -410,11 +411,11 @@ export default function JiraImportSection({
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p className="text-sm font-medium text-red-800">{error}</p>
+            <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
           </div>
           <button
             onClick={handleReset}
-            className="mt-3 text-sm text-red-700 underline hover:text-red-900"
+            className="mt-3 text-sm text-red-700 underline hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
           >
             Try Again
           </button>

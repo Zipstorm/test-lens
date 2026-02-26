@@ -57,7 +57,7 @@ export default function Home() {
     <main className="max-w-4xl mx-auto px-4 py-10 space-y-8">
       <Header />
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="flex gap-0" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
@@ -65,8 +65,8 @@ export default function Home() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600"
               }`}
             >
               {tab.label}

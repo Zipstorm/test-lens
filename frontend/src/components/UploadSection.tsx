@@ -55,7 +55,7 @@ export default function UploadSection({
       )}
 
       {status === "uploading" && (
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-6">
           <svg
             className="h-5 w-5 animate-spin text-blue-600"
             fill="none"
@@ -76,10 +76,10 @@ export default function UploadSection({
             />
           </svg>
           <div>
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Processing {fileName}...
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               Parsing, embedding, and indexing test cases. This may take a
               moment.
             </p>

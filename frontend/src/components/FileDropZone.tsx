@@ -80,7 +80,7 @@ export default function FileDropZone({
         className={`
           relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors
           ${disabled ? "cursor-not-allowed opacity-50" : ""}
-          ${isDragOver ? "border-blue-400 bg-blue-50" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50"}
+          ${isDragOver ? "border-blue-400 bg-blue-50 dark:bg-blue-950" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-800"}
         `}
       >
         <input
@@ -92,7 +92,7 @@ export default function FileDropZone({
           disabled={disabled}
         />
         <svg
-          className="mx-auto mb-3 h-10 w-10 text-slate-400"
+          className="mx-auto mb-3 h-10 w-10 text-slate-400 dark:text-slate-500"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -104,11 +104,11 @@ export default function FileDropZone({
             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
           />
         </svg>
-        <p className="text-sm font-medium text-slate-600">
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
           Drag & drop your test file here, or{" "}
-          <span className="text-blue-600 underline">browse</span>
+          <span className="text-blue-600 underline dark:text-blue-400">browse</span>
         </p>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
           CSV, XLSX, or XLS (max 10MB)
         </p>
       </div>

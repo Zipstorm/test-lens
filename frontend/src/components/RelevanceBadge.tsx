@@ -1,7 +1,7 @@
 const colorMap = {
   high: "bg-emerald-100 text-emerald-700",
   medium: "bg-amber-100 text-amber-700",
-  low: "bg-slate-100 text-slate-600",
+  low: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
 };
 
 interface RelevanceBadgeProps {

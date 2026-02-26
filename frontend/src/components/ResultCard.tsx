@@ -8,7 +8,7 @@ import type { SearchResult } from "../types";
 const borderColorMap = {
   high: "border-l-emerald-400",
   medium: "border-l-amber-400",
-  low: "border-l-slate-300",
+  low: "border-l-slate-300 dark:border-l-slate-600",
 };
 
 interface ResultCardProps {
@@ -19,8 +19,8 @@ interface ResultCardProps {
 
 function MetadataPill({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-      <span className="text-slate-400">{label}:</span> {value}
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+      <span className="text-slate-400 dark:text-slate-500">{label}:</span> {value}
     </span>
   );
 }
@@ -40,7 +40,7 @@ function StepsList({ stepsJson }: { stepsJson: string }) {
         </p>
         <ol className="list-decimal list-inside space-y-1">
           {steps.map((s, i) => (
-            <li key={i} className="text-xs text-slate-600">
+            <li key={i} className="text-xs text-slate-600 dark:text-slate-300">
               <span className="font-medium">{s.action}</span>
               {s.data && (
                 <span className="text-slate-400"> | Data: {s.data}</span>
@@ -75,7 +75,7 @@ function PreconditionsList({ preJson }: { preJson: string }) {
         </p>
         <ul className="list-disc list-inside space-y-0.5">
           {pcs.map((p, i) => (
-            <li key={i} className="text-xs text-slate-600">
+            <li key={i} className="text-xs text-slate-600 dark:text-slate-300">
               {p.key && (
                 <span className="font-medium text-blue-600">{p.key}: </span>
               )}
@@ -102,16 +102,16 @@ export default function ResultCard({
 
   return (
     <div
-      className={`rounded-lg border border-slate-200 bg-white shadow-sm border-l-4 ${borderColorMap[result.relevance]}`}
+      className={`rounded-lg border border-slate-200 bg-white shadow-sm border-l-4 dark:border-slate-700 dark:bg-slate-900 ${borderColorMap[result.relevance]}`}
     >
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2 min-w-0">
-            <span className="mt-0.5 flex-shrink-0 text-xs font-medium text-slate-400">
+            <span className="mt-0.5 flex-shrink-0 text-xs font-medium text-slate-400 dark:text-slate-500">
               #{index + 1}
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-800">
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                 {result.testCase}
               </p>
               {hasMetadata && (
@@ -140,7 +140,7 @@ export default function ResultCard({
 
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+          className="mt-2 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
         >
           <svg
             className={`h-3 w-3 transition-transform ${expanded ? "rotate-90" : ""}`}
@@ -159,7 +159,7 @@ export default function ResultCard({
         </button>
 
         {expanded && (
-          <div className="mt-2 rounded bg-slate-50 p-3 space-y-2">
+          <div className="mt-2 rounded bg-slate-50 p-3 space-y-2 dark:bg-slate-800">
             <p className="text-xs leading-relaxed text-slate-600">
               {result.reason}
             </p>
